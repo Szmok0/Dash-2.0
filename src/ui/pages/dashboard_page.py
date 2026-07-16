@@ -83,6 +83,7 @@ class DashboardPage(QWidget):
         self._table.cellClicked.connect(self._row_clicked)
 
         header = self._table.horizontalHeader()
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)

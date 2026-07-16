@@ -74,6 +74,7 @@ class ClientsPage(QWidget):
         self._table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
         self._table.cellClicked.connect(self._row_clicked)
         header = self._table.horizontalHeader()
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self._table.setColumnWidth(0, 100)
