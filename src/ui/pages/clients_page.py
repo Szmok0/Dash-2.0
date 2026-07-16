@@ -57,6 +57,8 @@ class ClientsPage(QWidget):
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._table.setWordWrap(False)
+        self._table.setTextElideMode(Qt.TextElideMode.ElideRight)
         self._table.horizontalHeader().setFixedHeight(TABLE_HEADER_HEIGHT)
         self._table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
         self._table.cellClicked.connect(self._row_clicked)

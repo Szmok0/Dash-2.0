@@ -79,6 +79,8 @@ class DashboardPage(QWidget):
         self._table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._table.setWordWrap(False)  # przy wąskich kolumnach przycinaj z „…", nie zawijaj
+        self._table.setTextElideMode(Qt.TextElideMode.ElideRight)
         self._table.horizontalHeader().setFixedHeight(TABLE_HEADER_HEIGHT)
         self._table.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
         self._table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)

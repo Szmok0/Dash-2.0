@@ -38,9 +38,9 @@ from ui.dialogs.module_view import ModuleViewDialog
 from ui.styles.theme import Palette
 from ui.widgets.pills import QuickStatusPill
 
-LEFT_COLUMN_WIDTH = 270
+LEFT_COLUMN_WIDTH = 290
 PHOTO_SIZE = 110
-MODULE_HEIGHT = 300
+MODULE_HEIGHT = 330
 
 
 def _fmt_date(value) -> str:
@@ -108,25 +108,20 @@ class ClientCardPage(QWidget):
         self._id_lbl = QLabel()
         self._id_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_layout.addWidget(self._id_lbl)
-        left_layout.addSpacing(12)
+        left_layout.addSpacing(10)
 
-        self._info_rows: dict[str, QLabel] = {}
-        for key in (
-            "Telefon",
-            "E-mail",
-            "Stopień niepełnospr.",
-            "Symbol",
-            "Data wejścia",
-            "Data IPD",
-        ):
-            caption = QLabel(key)
-            value = QLabel("—")
-            value.setWordWrap(True)
-            value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            left_layout.addWidget(caption)
-            left_layout.addWidget(value)
-            left_layout.addSpacing(6)
-            self._info_rows[key] = value
+        # komplet danych podstawowych (import XLSX / ręczne) — przewijalna lista
+        info_scroll = QScrollArea()
+        info_scroll.setWidgetResizable(True)
+        info_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        info_scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
+        info_host = QWidget()
+        self._info_layout = QVBoxLayout(info_host)
+        self._info_layout.setContentsMargins(0, 0, 8, 0)
+        self._info_layout.setSpacing(2)
+        self._info_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        info_scroll.setWidget(info_host)
+        left_layout.addWidget(info_scroll, 1)
         self._style_left_labels()
 
         body.addWidget(self._left)
@@ -163,13 +158,25 @@ class ClientCardPage(QWidget):
     def _style_left_labels(self) -> None:
         p = self._palette
         self._id_lbl.setStyleSheet(f"color: {p.text_muted}; font-size: 12px;")
-        for key, value_lbl in self._info_rows.items():
+
+    def _fill_left_info(self) -> None:
+        """Wypełnia lewą kolumnę kompletem danych podstawowych klienta."""
+        c = self._client
+        assert c is not None
+        p = self._palette
+        _clear_layout(self._info_layout)
+        for label, value in self._basic_data_pairs():
+            caption = QLabel(label)
+            caption.setStyleSheet(
+                f"color: {p.text_muted}; font-size: 11px; text-transform: uppercase;"
+                "padding-top: 6px;"
+            )
+            value_lbl = QLabel(value)
+            value_lbl.setWordWrap(True)
+            value_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             value_lbl.setStyleSheet(f"font-size: 13px; color: {p.text};")
-        for caption in self._left.findChildren(QLabel):
-            if caption.text() in self._info_rows:
-                caption.setStyleSheet(
-                    f"color: {p.text_muted}; font-size: 11px; text-transform: uppercase;"
-                )
+            self._info_layout.addWidget(caption)
+            self._info_layout.addWidget(value_lbl)
 
     # ------------------------------------------------------------------
     def show_client(self, client_id: int) -> None:
@@ -201,12 +208,7 @@ class ClientCardPage(QWidget):
 
         self._name_lbl.setText(client.full_name)
         self._id_lbl.setText(f"ID: {client.external_id}")
-        self._info_rows["Telefon"].setText(client.phone or "—")
-        self._info_rows["E-mail"].setText(client.email or "—")
-        self._info_rows["Stopień niepełnospr."].setText(client.disability_degree or "—")
-        self._info_rows["Symbol"].setText(client.disability_symbol or "—")
-        self._info_rows["Data wejścia"].setText(_fmt_date(client.recruitment_date))
-        self._info_rows["Data IPD"].setText(_fmt_date(client.ipd_date))
+        self._fill_left_info()
 
         self._attention_check.blockSignals(True)
         self._attention_check.setChecked(client.requires_attention)
@@ -255,20 +257,17 @@ class ClientCardPage(QWidget):
 
         _clear_layout(self._grid)
 
+        # 4 symetryczne moduły w siatce 2x2 (dane podstawowe są w lewej kolumnie)
         modules = [
-            ("Dane podstawowe", self._basic_data_entries(), None),
             ("Zadania", self._task_entries(), "Zadanie"),
             ("Kontakty", self._contact_entries(), "Kontakt"),
             ("Szkolenia", self._training_entries(), "Szkolenie"),
             ("Notatki", self._note_entries(), "Notatka"),
         ]
         for index, (title, entries, add_kind) in enumerate(modules):
-            row, col = divmod(index, 3)
+            row, col = divmod(index, 2)
             self._grid.addWidget(self._module_card(title, entries, add_kind), row, col)
-        # wyrównanie: pusta komórka w drugim rzędzie zachowuje równe szerokości
-        filler = QWidget()
-        self._grid.addWidget(filler, 1, 2)
-        for col in range(3):
+        for col in range(2):
             self._grid.setColumnStretch(col, 1)
 
     def _module_card(
@@ -361,12 +360,11 @@ class ClientCardPage(QWidget):
         return row
 
     # ------------------------------------------------------------------
-    def _basic_data_entries(self) -> list[tuple[str, str, str]]:
+    def _basic_data_pairs(self) -> list[tuple[str, str]]:
         c = self._client
         assert c is not None
-        pairs = [
-            ("ASII LP. / ID", c.external_id),
-            ("Imię i nazwisko", c.full_name),
+        # imię, nazwisko i ID są już nad listą (przy zdjęciu)
+        return [
             ("Telefon", c.phone or "—"),
             ("E-mail", c.email or "—"),
             ("Data rekrutacji", _fmt_date(c.recruitment_date)),
@@ -385,7 +383,6 @@ class ClientCardPage(QWidget):
             ("Poszukiwana praca", c.desired_job or "—"),
             ("Komentarz", c.import_comment or "—"),
         ]
-        return [(label, "", value) for label, value in pairs]
 
     def _task_entries(self) -> list[tuple[str, str, str]]:
         c = self._client
