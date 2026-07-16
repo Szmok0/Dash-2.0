@@ -4,11 +4,17 @@ Uruchamiane offscreen (QT_QPA_PLATFORM=offscreen) — renderuje okno do PNG.
 """
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+
+# świeża baza tymczasowa z danymi demo — zrzuty nie ruszają danych roboczych
+_tmp = tempfile.mkdtemp(prefix="cw_screens_")
+os.environ["CW_DATA_DIR"] = _tmp
 
 from PySide6.QtCore import QEvent
 from PySide6.QtGui import QFont
@@ -35,6 +41,12 @@ def main() -> None:
     font = QFont("Segoe UI")
     font.setPointSize(10)
     app.setFont(font)
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    from seed_demo import seed
+    from services.store import DataStore
+
+    seed(DataStore())
 
     window = MainWindow()
     window.show()

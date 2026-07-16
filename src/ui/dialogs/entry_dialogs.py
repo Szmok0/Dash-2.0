@@ -1,4 +1,4 @@
-"""Formularze + Dodaj: Zadanie / Kontakt / Szkolenie / Notatka (Sprint 0: zapis do pamięci)."""
+"""Formularze + Dodaj: Zadanie / Kontakt / Szkolenie / Notatka (zapis przez DataStore)."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from config import FORM_WIDTH
-from data.sample_data import (
+from models.entities import (
     CONTACT_STATUSES,
     CONTACT_TYPE_LABELS,
     CONTACT_TYPES,
@@ -27,7 +27,6 @@ from data.sample_data import (
     Note,
     PRIORITIES,
     PRIORITY_LABELS,
-    SampleStore,
     TASK_STATUS_LABELS,
     TASK_STATUSES,
     Task,
@@ -37,6 +36,7 @@ from data.sample_data import (
     TRAINING_TYPES,
     Training,
 )
+from services.store import DataStore
 
 
 class _BaseDialog(QDialog):
@@ -87,12 +87,18 @@ class _BaseDialog(QDialog):
 
 
 class TaskDialog(_BaseDialog):
-    def __init__(self, parent: QWidget, store: SampleStore, client_id: int) -> None:
+    def __init__(self, parent: QWidget, store: DataStore, client_id: int) -> None:
         super().__init__(parent, "Nowe zadanie")
         self._store = store
         self._client_id = client_id
 
         self.title_edit = QLineEdit()
+        self.action_box = QComboBox()
+        for value, label in (
+            ("telefon", "Telefon"), ("spotkanie", "Spotkanie"), ("email", "E-mail"),
+            ("cv", "CV"), ("szkolenie", "Szkolenie"), ("notatka", "Notatka"),
+        ):
+            self.action_box.addItem(label, value)
         self.due_edit = QDateTimeEdit(QDateTime.currentDateTime())
         self.due_edit.setDisplayFormat("dd.MM.yyyy HH:mm")
         self.due_edit.setCalendarPopup(True)
@@ -105,6 +111,7 @@ class TaskDialog(_BaseDialog):
         self.note_edit = self._note_field()
 
         self.form.addRow("Nazwa", self.title_edit)
+        self.form.addRow("Typ działania", self.action_box)
         self.form.addRow("Termin", self.due_edit)
         self.form.addRow("Priorytet", self.priority_box)
         self.form.addRow("Status", self.status_box)
@@ -116,11 +123,12 @@ class TaskDialog(_BaseDialog):
             self.title_edit.setFocus()
             return
         status = self.status_box.currentData()
-        self._store.tasks.append(
+        self._store.add_task(
             Task(
-                id=self._store.next_id(),
+                id=0,
                 client_id=self._client_id,
                 title=title,
+                action_type=self.action_box.currentData(),
                 due_at=self.due_edit.dateTime().toPython(),
                 priority=self.priority_box.currentData(),
                 status=status,
@@ -132,7 +140,7 @@ class TaskDialog(_BaseDialog):
 
 
 class ContactDialog(_BaseDialog):
-    def __init__(self, parent: QWidget, store: SampleStore, client_id: int) -> None:
+    def __init__(self, parent: QWidget, store: DataStore, client_id: int) -> None:
         super().__init__(parent, "Nowy kontakt")
         self._store = store
         self._client_id = client_id
@@ -154,9 +162,9 @@ class ContactDialog(_BaseDialog):
         self.form.addRow("Notatka", self.note_edit)
 
     def _save(self) -> None:
-        self._store.contacts.append(
+        self._store.add_contact(
             Contact(
-                id=self._store.next_id(),
+                id=0,
                 client_id=self._client_id,
                 contact_type=self.type_box.currentData(),
                 contact_at=self.datetime_edit.dateTime().toPython(),
@@ -168,7 +176,7 @@ class ContactDialog(_BaseDialog):
 
 
 class TrainingDialog(_BaseDialog):
-    def __init__(self, parent: QWidget, store: SampleStore, client_id: int) -> None:
+    def __init__(self, parent: QWidget, store: DataStore, client_id: int) -> None:
         super().__init__(parent, "Nowe szkolenie")
         self._store = store
         self._client_id = client_id
@@ -196,9 +204,9 @@ class TrainingDialog(_BaseDialog):
         if not name:
             self.name_edit.setFocus()
             return
-        self._store.trainings.append(
+        self._store.add_training(
             Training(
-                id=self._store.next_id(),
+                id=0,
                 client_id=self._client_id,
                 name=name,
                 training_date=self.date_edit.dateTime().toPython().date(),
@@ -211,7 +219,7 @@ class TrainingDialog(_BaseDialog):
 
 
 class NoteDialog(_BaseDialog):
-    def __init__(self, parent: QWidget, store: SampleStore, client_id: int) -> None:
+    def __init__(self, parent: QWidget, store: DataStore, client_id: int) -> None:
         super().__init__(parent, "Nowa notatka")
         self._store = store
         self._client_id = client_id
@@ -224,9 +232,9 @@ class NoteDialog(_BaseDialog):
         if not content:
             self.note_edit.setFocus()
             return
-        self._store.notes.append(
+        self._store.add_note(
             Note(
-                id=self._store.next_id(),
+                id=0,
                 client_id=self._client_id,
                 content=content,
                 created_at=datetime.now(),

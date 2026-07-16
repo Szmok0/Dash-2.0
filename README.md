@@ -1,8 +1,16 @@
-# Client Workbench — Sprint 0 (shell UI)
+# Client Workbench — Sprint 1 (SQLite)
 
 Lokalna aplikacja desktopowa (Windows 11, offline) do pracy z klientami.
-Ten etap to **Sprint 0** wg `docs/BUILD.md`: klikalny shell UI z danymi
-testowymi w pamięci — **bez SQLite** (baza wchodzi w Sprintcie 1).
+Zrealizowane etapy wg `docs/BUILD.md`:
+
+- **Sprint 0** — klikalny shell UI (dark/light, Dashboard, karta klienta),
+- **Sprint 1** — baza SQLite (`data/client_workbench.db`, WAL, foreign keys),
+  lista klientów i wyszukiwanie z bazy, ręczne dodawanie klienta
+  (ID wymagane i unikalne), zdjęcia kopiowane do `data/photos/`.
+
+Architektura wg BUILD.md: UI nie wykonuje SQL — strony rozmawiają z fasadą
+`services.DataStore`, która używa repozytoriów (`repositories/`) nad SQLite
+(`database/connection.py` + `database/schema.sql`); encje w `models/`.
 
 ## Co zawiera Sprint 0
 
@@ -22,7 +30,13 @@ python -m pip install -r requirements.txt
 python src/app.py
 ```
 
-Wymagany Python 3.11+ oraz PySide6.
+Wymagany Python 3.11+ oraz PySide6. Baza tworzy się automatycznie w `./data/`
+(katalog można zmienić zmienną środowiskową `CW_DATA_DIR`). Aplikacja startuje
+pusta; dane demonstracyjne można zasiać:
+
+```bash
+python tools/seed_demo.py
+```
 
 ## Zrzuty ekranu
 
@@ -39,20 +53,24 @@ Wyniki w `docs/screenshots/` (Dashboard i Karta klienta w 1920×1080 i 1366×768
 ```
 docs/            dokumentacja produktu (PRODUCT, UI, DATABASE, WORKFLOW, BUILD, schema.sql)
 src/app.py       punkt wejścia
-src/config.py    stałe wymiarów/rozmiarów
-src/data/        dane testowe Sprintu 0 (w pamięci)
+src/config.py    stałe wymiarów + ścieżki katalogu danych
+src/database/    połączenie SQLite + schema.sql
+src/models/      encje domenowe i słowniki etykiet
+src/repositories/ dostęp do tabel (clients, tasks, contacts, trainings, notes)
+src/services/    DataStore — fasada danych dla UI (w tym kopiowanie zdjęć)
+src/data/        zestaw danych demonstracyjnych (seed)
 src/ui/windows/  okno główne
 src/ui/pages/    Dashboard, Klienci, Karta klienta, Ustawienia, zaślepki
-src/ui/dialogs/  formularze + pełny widok modułu
+src/ui/dialogs/  formularze (zadanie/kontakt/szkolenie/notatka, klient) + pełny widok modułu
 src/ui/widgets/  sidebar, header, pigułki statusów, ikony
 src/ui/styles/   palety dark/light + QSS
-tools/           generator zdjęcia testowego i zrzutów ekranu
+tools/           seed_demo, generator zdjęcia testowego i zrzutów ekranu
 resources/       zasoby (zdjęcie testowe)
+data/            baza, zdjęcia, backupy (poza repozytorium)
 ```
 
 ## Kolejne sprinty (wg BUILD.md)
 
-1. SQLite, lista klientów, ręczne dodawanie, zdjęcia
 2. Zadania i Dashboard z realnych danych
 3. Kontakty, notatki, oś czasu, brak kontaktu >30 dni
 4. Szkolenia i Kalendarz

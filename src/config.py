@@ -21,3 +21,26 @@ MIN_WINDOW_SIZE = (1366, 768)
 
 # Maksymalna szerokość treści na dużych monitorach (UI.md: 27")
 MAX_CONTENT_WIDTH = 1720
+
+# --- katalog danych (BUILD.md: dane poza katalogiem programu) ---
+import os
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+
+
+def data_dir() -> Path:
+    """Katalog danych: zmienna CW_DATA_DIR lub ./data obok repozytorium."""
+    path = Path(os.environ.get("CW_DATA_DIR", _ROOT / "data"))
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def photos_dir() -> Path:
+    path = data_dir() / "photos"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def db_path() -> Path:
+    return data_dir() / "client_workbench.db"

@@ -7,8 +7,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
+    QHBoxLayout,
     QHeaderView,
     QLabel,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -16,7 +18,8 @@ from PySide6.QtWidgets import (
 )
 
 from config import TABLE_HEADER_HEIGHT, TABLE_ROW_HEIGHT
-from data.sample_data import CLIENT_STATUS_LABELS, SampleStore
+from models.entities import CLIENT_STATUS_LABELS
+from services.store import DataStore
 from ui.styles.theme import Palette
 from ui.widgets.pills import make_pill
 
@@ -26,7 +29,7 @@ COLUMNS = ["ID", "Nazwisko", "Imię", "Telefon", "E-mail", "Status"]
 class ClientsPage(QWidget):
     def __init__(
         self,
-        store: SampleStore,
+        store: DataStore,
         palette: Palette,
         open_client: Callable[[int], None],
     ) -> None:
@@ -46,9 +49,17 @@ class ClientsPage(QWidget):
         layout.setContentsMargins(16, 14, 16, 12)
         layout.setSpacing(10)
 
+        head = QHBoxLayout()
         title = QLabel("Klienci")
         title.setStyleSheet("font-size: 17px; font-weight: 700;")
-        layout.addWidget(title)
+        head.addWidget(title)
+        head.addStretch(1)
+        add_btn = QPushButton("+ Dodaj klienta")
+        add_btn.setObjectName("Primary")
+        add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_btn.clicked.connect(self._add_client)
+        head.addWidget(add_btn)
+        layout.addLayout(head)
 
         self._table = QTableWidget(0, len(COLUMNS))
         self._table.setHorizontalHeaderLabels(COLUMNS)
@@ -81,13 +92,7 @@ class ClientsPage(QWidget):
 
     def refresh(self) -> None:
         p = self._palette
-        clients = [
-            c
-            for c in self._store.clients
-            if not self._filter
-            or self._filter in f"{c.external_id} {c.first_name} {c.last_name}".lower()
-        ]
-        clients.sort(key=lambda c: (c.last_name, c.first_name))
+        clients = self._store.search_clients(self._filter)
         self._table.setRowCount(len(clients))
         for row, c in enumerate(clients):
             self._table.setItem(row, 0, QTableWidgetItem(c.external_id))
@@ -97,8 +102,6 @@ class ClientsPage(QWidget):
             self._table.setItem(row, 4, QTableWidgetItem(c.email or "—"))
             color = p.accent if c.client_status == "aktywny" else p.text_muted
             cell = QWidget()
-            from PySide6.QtWidgets import QHBoxLayout
-
             cell_layout = QHBoxLayout(cell)
             cell_layout.setContentsMargins(8, 0, 8, 0)
             cell_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
@@ -106,11 +109,19 @@ class ClientsPage(QWidget):
             cell.setStyleSheet(f"background: transparent; border-bottom: 1px solid {p.line};")
             self._table.setCellWidget(row, 5, cell)
 
+    def _add_client(self) -> None:
+        from ui.dialogs.client_form import ClientFormDialog
+
+        dialog = ClientFormDialog(self, self._store)
+        dialog.set_error_color(self._palette.red)
+        if dialog.exec() and dialog.created_client_id is not None:
+            self.refresh()
+            self._open_client(dialog.created_client_id)
+
     def _row_clicked(self, row: int, _column: int) -> None:
         item = self._table.item(row, 0)
         if item is None:
             return
-        for c in self._store.clients:
-            if c.external_id == item.text():
-                self._open_client(c.id)
-                return
+        client = self._store.find_by_external_id(item.text())
+        if client is not None:
+            self._open_client(client.id)

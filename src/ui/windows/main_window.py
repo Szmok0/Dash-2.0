@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from config import APP_NAME, BASE_WINDOW_SIZE, MIN_WINDOW_SIZE
-from data.sample_data import SampleStore, build_sample_store
+from services.store import DataStore
 from ui.pages.client_card_page import ClientCardPage
 from ui.pages.clients_page import ClientsPage
 from ui.pages.dashboard_page import DashboardPage
@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
         self.resize(*BASE_WINDOW_SIZE)
         self.setMinimumSize(*MIN_WINDOW_SIZE)
 
-        self.store: SampleStore = build_sample_store()
+        self.store: DataStore = DataStore()
         self.palette_theme: Palette = DARK
         self._dark = True
         self._current_page = "dashboard"

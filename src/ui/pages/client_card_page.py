@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from data.sample_data import (
+from models.entities import (
     CLIENT_STATUS_LABELS,
     CONTACT_TYPE_LABELS,
     CV_STATUS_LABELS,
@@ -28,11 +28,11 @@ from data.sample_data import (
     INTERNSHIP_LABELS,
     IPD_STATUS_LABELS,
     PRIORITY_LABELS,
-    SampleStore,
     TASK_STATUS_LABELS,
     TRAINING_STATUS_LABELS,
     TRAINING_TYPE_LABELS,
 )
+from services.store import DataStore
 from ui.dialogs.entry_dialogs import DIALOGS
 from ui.dialogs.module_view import ModuleViewDialog
 from ui.styles.theme import Palette
@@ -50,7 +50,7 @@ def _fmt_date(value) -> str:
 class ClientCardPage(QWidget):
     def __init__(
         self,
-        store: SampleStore,
+        store: DataStore,
         palette: Palette,
         on_back: Callable[[], None],
         on_data_changed: Callable[[], None],
@@ -99,10 +99,20 @@ class ClientCardPage(QWidget):
         photo_row.addStretch(1)
         left_layout.addLayout(photo_row)
 
+        self._photo_btn = QPushButton("Zmień zdjęcie")
+        self._photo_btn.setObjectName("Ghost")
+        self._photo_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._photo_btn.clicked.connect(self._pick_photo)
+        photo_btn_row = QHBoxLayout()
+        photo_btn_row.addStretch(1)
+        photo_btn_row.addWidget(self._photo_btn)
+        photo_btn_row.addStretch(1)
+        left_layout.addLayout(photo_btn_row)
+
         self._name_lbl = QLabel()
         self._name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._name_lbl.setWordWrap(True)
-        self._name_lbl.setStyleSheet("font-size: 17px; font-weight: 700; padding-top: 8px;")
+        self._name_lbl.setStyleSheet("font-size: 17px; font-weight: 700; padding-top: 4px;")
         left_layout.addWidget(self._name_lbl)
 
         self._id_lbl = QLabel()
@@ -206,6 +216,7 @@ class ClientCardPage(QWidget):
                 "border-radius: 10px;"
             )
 
+        self._photo_btn.setText("Zmień zdjęcie" if client.photo_path else "Dodaj zdjęcie")
         self._name_lbl.setText(client.full_name)
         self._id_lbl.setText(f"ID: {client.external_id}")
         self._fill_left_info()
@@ -231,6 +242,7 @@ class ClientCardPage(QWidget):
 
             def on_change(v: str) -> None:
                 setattr(client, attr, v)
+                self._store.update_client(client)
                 self._on_data_changed()
 
             self._status_row.addWidget(
@@ -447,12 +459,26 @@ class ClientCardPage(QWidget):
             menu.addAction(kind, lambda k=kind: self._open_add_dialog(k))
         menu.exec(anchor.mapToGlobal(anchor.rect().bottomLeft()))
 
+    def _pick_photo(self) -> None:
+        if self._client is None:
+            return
+        from PySide6.QtWidgets import QFileDialog
+
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Wybierz zdjęcie", "", "Obrazy (*.png *.jpg *.jpeg *.bmp)"
+        )
+        if not path:
+            return
+        self._store.set_client_photo(self._client, path)
+        self.show_client(self._client.id)
+
     def _toggle_attention(self, checked: bool) -> None:
         if self._client is None:
             return
         self._client.requires_attention = checked
         if not checked:
             self._client.attention_note = ""
+        self._store.update_client(self._client)
         self._on_data_changed()
 
 

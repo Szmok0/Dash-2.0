@@ -1,239 +1,25 @@
-"""Statyczne dane testowe dla Sprintu 0 (bez SQLite).
+"""Dane demonstracyjne (seed) — używane przez tools/seed_demo.py.
 
-Struktury odwzorowują docelowe tabele z DATABASE.md, ale żyją wyłącznie
-w pamięci. W Sprintcie 1 zostaną zastąpione repozytoriami SQLite.
+Encje pochodzą z models.entities; ten moduł tylko buduje przykładowy zestaw.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Optional
+
+from models.entities import Client, Contact, Note, Task, Training
 
 RESOURCES_DIR = Path(__file__).resolve().parent.parent.parent / "resources"
 
-PRIORITIES = ["niski", "sredni", "wysoki"]
-TASK_STATUSES = ["do_zrobienia", "w_trakcie", "zakonczone", "anulowane", "oczekuje_na"]
-CONTACT_TYPES = ["telefon", "spotkanie", "email", "sms", "teams", "inne"]
-CONTACT_STATUSES = ["planowany", "odbyty", "nieudany"]
-TRAINING_TYPES = ["indywidualne", "grupowe", "wuz", "it", "adaptacyjne", "elearning"]
-TRAINING_STATUSES = ["planowane", "ukonczyl", "nie_ukonczyl"]
-
-PRIORITY_LABELS = {"niski": "Niski", "sredni": "Średni", "wysoki": "Wysoki"}
-TASK_STATUS_LABELS = {
-    "do_zrobienia": "Do zrobienia",
-    "w_trakcie": "W trakcie",
-    "zakonczone": "Zakończone",
-    "anulowane": "Anulowane",
-    "oczekuje_na": "Oczekuję na",
-}
-CONTACT_TYPE_LABELS = {
-    "telefon": "Telefon",
-    "spotkanie": "Spotkanie",
-    "email": "E-mail",
-    "sms": "SMS",
-    "teams": "Teams",
-    "inne": "Inne",
-}
-TRAINING_TYPE_LABELS = {
-    "indywidualne": "Indywidualne",
-    "grupowe": "Grupowe",
-    "wuz": "WUZ",
-    "it": "IT",
-    "adaptacyjne": "Adaptacyjne",
-    "elearning": "E-learning",
-}
-TRAINING_STATUS_LABELS = {
-    "planowane": "Planowane",
-    "ukonczyl": "Ukończył",
-    "nie_ukonczyl": "Nie ukończył",
-}
-CV_STATUS_LABELS = {"aktualne": "Aktualne", "nieaktualne": "Nieaktualne"}
-IPD_STATUS_LABELS = {"aktualne": "Aktualne", "nieaktualne": "Nieaktualne"}
-INTERNSHIP_LABELS = {"brak": "Brak", "w_trakcie": "W trakcie"}
-EMPLOYMENT_LABELS = {"bez_pracy": "Bez pracy", "zatrudniony": "Zatrudniony"}
-CLIENT_STATUS_LABELS = {"aktywny": "Aktywny", "zamkniety": "Zamknięty"}
-
 
 @dataclass
-class Task:
-    id: int
-    client_id: int
-    title: str
-    due_at: Optional[datetime]
-    priority: str
-    status: str
-    note: str = ""
-    action_type: str = "notatka"  # typ działania na Dashboardzie
-    completed_at: Optional[datetime] = None
-
-
-@dataclass
-class Contact:
-    id: int
-    client_id: int
-    contact_type: str
-    contact_at: datetime
-    status: str
-    note: str = ""
-
-
-@dataclass
-class Training:
-    id: int
-    client_id: int
-    name: str
-    training_date: date
-    training_type: str
-    status: str
-    note: str = ""
-
-
-@dataclass
-class Note:
-    id: int
-    client_id: int
-    content: str
-    created_at: datetime
-
-
-@dataclass
-class Client:
-    id: int
-    external_id: str
-    first_name: str
-    last_name: str
-    phone: str = ""
-    email: str = ""
-    recruitment_date: Optional[date] = None
-    ipd_date: Optional[date] = None
-    cv_status: str = "nieaktualne"
-    ipd_status: str = "nieaktualne"
-    employment_status: str = "bez_pracy"
-    internship_status: str = "brak"
-    client_status: str = "aktywny"
-    dz: str = ""
-    jc: str = ""
-    rp: str = ""
-    psychologist: str = ""
-    lawyer: str = ""
-    gender: str = ""
-    disability_degree: str = ""
-    disability_symbol: str = ""
-    combined_symbols: str = ""
-    education: str = ""
-    certificate_valid_until: Optional[date] = None
-    desired_job: str = ""
-    import_comment: str = ""
-    requires_attention: bool = False
-    attention_note: str = ""
-    photo_path: Optional[str] = None
-
-    @property
-    def full_name(self) -> str:
-        return f"{self.first_name} {self.last_name}"
-
-
-@dataclass
-class SampleStore:
-    """Magazyn danych testowych w pamięci."""
-
+class DemoData:
     clients: list[Client] = field(default_factory=list)
     tasks: list[Task] = field(default_factory=list)
     contacts: list[Contact] = field(default_factory=list)
     trainings: list[Training] = field(default_factory=list)
     notes: list[Note] = field(default_factory=list)
-    _next_id: int = 1000
-
-    def next_id(self) -> int:
-        self._next_id += 1
-        return self._next_id
-
-    def client(self, client_id: int) -> Client:
-        return next(c for c in self.clients if c.id == client_id)
-
-    def client_tasks(self, client_id: int) -> list[Task]:
-        return [t for t in self.tasks if t.client_id == client_id]
-
-    def client_contacts(self, client_id: int) -> list[Contact]:
-        return sorted(
-            (c for c in self.contacts if c.client_id == client_id),
-            key=lambda c: c.contact_at,
-            reverse=True,
-        )
-
-    def client_trainings(self, client_id: int) -> list[Training]:
-        return sorted(
-            (t for t in self.trainings if t.client_id == client_id),
-            key=lambda t: t.training_date,
-            reverse=True,
-        )
-
-    def client_notes(self, client_id: int) -> list[tuple[datetime, str, str]]:
-        """Notatki własne + notatki z kontaktów, od najnowszej."""
-        items: list[tuple[datetime, str, str]] = []
-        for n in self.notes:
-            if n.client_id == client_id:
-                items.append((n.created_at, "Notatka", n.content))
-        for c in self.contacts:
-            if c.client_id == client_id and c.note:
-                label = CONTACT_TYPE_LABELS.get(c.contact_type, c.contact_type)
-                items.append((c.contact_at, f"Kontakt · {label}", c.note))
-        items.sort(key=lambda item: item[0], reverse=True)
-        return items
-
-    # --- zapytania dashboardowe ---
-    def active_clients(self) -> list[Client]:
-        return [c for c in self.clients if c.client_status == "aktywny"]
-
-    def dashboard_tasks(self) -> list[Task]:
-        """Otwarte zadania aktywnych klientów + zakończone dzisiaj."""
-        today = date.today()
-        active_ids = {c.id for c in self.active_clients()}
-        rows: list[Task] = []
-        for t in self.tasks:
-            if t.client_id not in active_ids:
-                continue
-            if t.status in ("zakonczone", "anulowane"):
-                if t.completed_at is not None and t.completed_at.date() == today:
-                    rows.append(t)
-                continue
-            rows.append(t)
-        prio_rank = {"wysoki": 0, "sredni": 1, "niski": 2}
-        far = datetime.max
-        rows.sort(key=lambda t: (t.status == "zakonczone", prio_rank.get(t.priority, 3), t.due_at or far))
-        return rows
-
-    def todays_meetings(self) -> list[Contact]:
-        today = date.today()
-        return sorted(
-            (
-                c
-                for c in self.contacts
-                if c.contact_type == "spotkanie"
-                and c.contact_at.date() == today
-                and self.client(c.client_id).client_status == "aktywny"
-            ),
-            key=lambda c: c.contact_at,
-        )
-
-    def no_contact_over(self, days: int = 30) -> list[tuple[Client, Optional[int]]]:
-        """Aktywni klienci bez kontaktu > days dni; bez żadnego kontaktu też."""
-        threshold = datetime.now() - timedelta(days=days)
-        result: list[tuple[Client, Optional[int]]] = []
-        for client in self.active_clients():
-            past = [c.contact_at for c in self.contacts if c.client_id == client.id and c.contact_at <= datetime.now()]
-            if not past:
-                result.append((client, None))
-            else:
-                last = max(past)
-                if last < threshold:
-                    result.append((client, (datetime.now() - last).days))
-        result.sort(key=lambda item: -(item[1] if item[1] is not None else 9999))
-        return result
-
-    def requires_attention(self) -> list[Client]:
-        return [c for c in self.active_clients() if c.requires_attention]
 
 
 def _long_note() -> str:
@@ -264,15 +50,12 @@ def _long_note() -> str:
     return "\n".join(lines)
 
 
-def build_sample_store() -> SampleStore:
+def build_demo_data() -> DemoData:
     now = datetime.now()
     today = date.today()
-    store = SampleStore()
+    data = DemoData()
 
-    photo = RESOURCES_DIR / "photos" / "client_AS-1024.png"
-    photo_path = str(photo) if photo.exists() else None
-
-    store.clients = [
+    data.clients = [
         Client(
             id=1, external_id="AS-1024", first_name="Anna", last_name="Kowalska",
             phone="601 234 567", email="anna.kowalska@example.com",
@@ -284,7 +67,6 @@ def build_sample_store() -> SampleStore:
             combined_symbols="07-S", education="Średnie",
             certificate_valid_until=date(2026, 12, 31),
             desired_job="Pracownik administracyjno-biurowy",
-            photo_path=photo_path,
         ),
         Client(
             id=2, external_id="AS-1031", first_name="Marek", last_name="Nowak",
@@ -335,7 +117,7 @@ def build_sample_store() -> SampleStore:
         ),
     ]
 
-    store.tasks = [
+    data.tasks = [
         Task(id=1, client_id=2, title="Skompletować dokumenty stażowe", action_type="cv",
              due_at=now.replace(hour=12, minute=0), priority="wysoki", status="do_zrobienia",
              note="Umowa + orzeczenie + skierowanie."),
@@ -358,7 +140,7 @@ def build_sample_store() -> SampleStore:
              due_at=now + timedelta(days=4), priority="niski", status="anulowane"),
     ]
 
-    store.contacts = [
+    data.contacts = [
         Contact(id=1, client_id=1, contact_type="spotkanie",
                 contact_at=now.replace(hour=9, minute=0), status="odbyty",
                 note="Omówiono aktualizację CV i plan szkoleń na najbliższy kwartał."),
@@ -382,7 +164,7 @@ def build_sample_store() -> SampleStore:
                 note="Konsultacja online z doradcą zawodowym."),
     ]
 
-    store.trainings = [
+    data.trainings = [
         Training(id=1, client_id=1, name="Warsztat umiejętności zawodowych",
                  training_date=today + timedelta(days=9), training_type="wuz",
                  status="planowane", note="Grupa poranna."),
@@ -397,7 +179,7 @@ def build_sample_store() -> SampleStore:
                  status="planowane"),
     ]
 
-    store.notes = [
+    data.notes = [
         Note(id=1, client_id=1, content=_long_note(), created_at=now - timedelta(days=1)),
         Note(id=2, client_id=1,
              content="Klientka dostarczyła zaktualizowane orzeczenie o niepełnosprawności.",
@@ -410,4 +192,4 @@ def build_sample_store() -> SampleStore:
              created_at=now - timedelta(days=5)),
     ]
 
-    return store
+    return data

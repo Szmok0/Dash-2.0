@@ -21,12 +21,8 @@ from PySide6.QtWidgets import (
 )
 
 from config import TABLE_HEADER_HEIGHT, TABLE_ROW_HEIGHT
-from data.sample_data import (
-    PRIORITY_LABELS,
-    SampleStore,
-    TASK_STATUS_LABELS,
-    Task,
-)
+from models.entities import PRIORITY_LABELS, TASK_STATUS_LABELS, Task
+from services.store import DataStore
 from ui.styles.theme import Palette
 from ui.widgets.icons import make_icon
 from ui.widgets.pills import make_pill, priority_color, task_status_color
@@ -46,7 +42,7 @@ COLUMNS = ["", "Typ", "Zadanie", "Klient", "ID", "Termin", "Priorytet", "Status"
 class DashboardPage(QWidget):
     def __init__(
         self,
-        store: SampleStore,
+        store: DataStore,
         palette: Palette,
         open_client: Callable[[int], None],
     ) -> None:
@@ -229,14 +225,7 @@ class DashboardPage(QWidget):
                     item.setForeground(Qt.GlobalColor.gray)
 
     def _toggle_done(self, task: Task, checked: bool) -> None:
-        from datetime import datetime
-
-        if checked:
-            task.status = "zakonczone"
-            task.completed_at = datetime.now()
-        else:
-            task.status = "do_zrobienia"
-            task.completed_at = None
+        self._store.set_task_done(task, checked)
         self.refresh()
 
     def _row_clicked(self, row: int, column: int) -> None:
@@ -245,11 +234,9 @@ class DashboardPage(QWidget):
         item = self._table.item(row, 4)
         if item is None:
             return
-        external_id = item.text()
-        for client in self._store.clients:
-            if client.external_id == external_id:
-                self._open_client(client.id)
-                return
+        client = self._store.find_by_external_id(item.text())
+        if client is not None:
+            self._open_client(client.id)
 
     def _fill_side_panels(self) -> None:
         no_contact = self._store.no_contact_over(30)
