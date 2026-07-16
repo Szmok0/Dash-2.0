@@ -100,7 +100,7 @@ class ModuleViewDialog(QDialog):
         frame.setObjectName("Card")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(4)
+        layout.setSpacing(7)
 
         top = QHBoxLayout()
         header_lbl = QLabel(header)

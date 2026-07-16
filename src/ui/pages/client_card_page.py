@@ -282,7 +282,7 @@ class ClientCardPage(QWidget):
         frame.setFixedHeight(MODULE_HEIGHT)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(8)
+        layout.setSpacing(10)
 
         head = QHBoxLayout()
         title_btn = QPushButton(title)
@@ -335,8 +335,8 @@ class ClientCardPage(QWidget):
         row = QFrame()
         row.setStyleSheet(f"border: none; border-bottom: 1px solid {p.line}; background: transparent;")
         layout = QVBoxLayout(row)
-        layout.setContentsMargins(0, 2, 0, 6)
-        layout.setSpacing(1)
+        layout.setContentsMargins(0, 4, 0, 9)
+        layout.setSpacing(5)
 
         top = QHBoxLayout()
         header_lbl = QLabel(header)
