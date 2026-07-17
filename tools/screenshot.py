@@ -64,6 +64,9 @@ def main() -> None:
         window.open_client(1)  # klientka ze zdjęciem i długą notatką
         grab(window, f"karta_klienta_{suffix}")
 
+        window.navigate("kalendarz")
+        grab(window, f"kalendarz_{suffix}")
+
     # bonus: motyw jasny na 1920x1080
     window.resize(1920, 1080)
     window.sidebar.set_collapsed(False)

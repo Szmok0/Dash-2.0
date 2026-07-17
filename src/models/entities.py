@@ -91,6 +91,23 @@ class Note:
 
 
 @dataclass
+class CalendarEvent:
+    """Wydarzenie w kalendarzu — wizualizacja daty z zadania/kontaktu/szkolenia."""
+
+    client_id: int
+    last_name: str
+    first_name: str
+    kind: str  # zadanie / kontakt / szkolenie
+    label: str  # typ działania do wyświetlenia
+    when: datetime  # data + godzina (dla szkoleń godzina 00:00)
+    has_time: bool  # czy pokazywać godzinę (szkolenia mają tylko datę)
+
+    @property
+    def event_date(self) -> date:
+        return self.when.date()
+
+
+@dataclass
 class Client:
     id: int
     external_id: str

@@ -23,6 +23,7 @@ from repositories.activities import (
     TaskRepository,
     TrainingRepository,
 )
+from repositories.calendar import CalendarRepository
 from repositories.clients import ClientRepository
 
 
@@ -34,6 +35,7 @@ class DataStore:
         self._contacts = ContactRepository(self._conn)
         self._trainings = TrainingRepository(self._conn)
         self._notes = NoteRepository(self._conn)
+        self._calendar = CalendarRepository(self._conn)
 
     # --- klienci -------------------------------------------------------
     @property
@@ -114,6 +116,10 @@ class DataStore:
 
     def add_training(self, training: Training) -> int:
         return self._trainings.insert(training)
+
+    # --- kalendarz -----------------------------------------------------
+    def calendar_events(self, start: date, end: date):
+        return self._calendar.events_between(start, end)
 
     # --- notatki -------------------------------------------------------
     def add_note(self, note: Note) -> int:

@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from config import APP_NAME, BASE_WINDOW_SIZE, MIN_WINDOW_SIZE
 from services.store import DataStore
+from ui.pages.calendar_page import CalendarPage
 from ui.pages.client_card_page import ClientCardPage
 from ui.pages.clients_page import ClientsPage
 from ui.pages.dashboard_page import DashboardPage
@@ -63,9 +64,7 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.dashboard = DashboardPage(self.store, self.palette_theme, self.open_client)
         self.clients_page = ClientsPage(self.store, self.palette_theme, self.open_client)
-        self.calendar_page = PlaceholderPage(
-            self.palette_theme, "Kalendarz", "Widok miesiąca i tygodnia — Sprint 4."
-        )
+        self.calendar_page = CalendarPage(self.store, self.palette_theme, self.open_client)
         self.analytics_page = PlaceholderPage(
             self.palette_theme, "Analityka", "Filtry, historia działań i eksport — Sprint 5."
         )
@@ -108,6 +107,8 @@ class MainWindow(QMainWindow):
             self.dashboard.refresh()
         elif key == "klienci":
             self.clients_page.refresh()
+        elif key == "kalendarz":
+            self.calendar_page.refresh()
 
     def open_client(self, client_id: int) -> None:
         self.client_card.show_client(client_id)
