@@ -330,8 +330,10 @@ class ClientCardPage(QWidget):
         layout.addLayout(head)
 
         shown = entries[:4]
-        for header, meta, content in shown:
-            layout.addWidget(self._entry_row(header, meta, content))
+        for entry in shown:
+            header, meta, content = entry[0], entry[1], entry[2]
+            edit_ref = entry[3] if len(entry) > 3 else None
+            layout.addWidget(self._entry_row(header, meta, content, edit_ref))
         if not entries:
             empty = QLabel("Brak wpisów")
             empty.setStyleSheet(f"color: {p.text_muted}; font-size: 12px;")
@@ -346,10 +348,19 @@ class ClientCardPage(QWidget):
             layout.addWidget(more)
         return frame
 
-    def _entry_row(self, header: str, meta: str, content: str) -> QFrame:
+    def _entry_row(self, header: str, meta: str, content: str, edit_ref=None) -> QFrame:
         p = self._palette
         row = QFrame()
-        row.setStyleSheet(f"border: none; border-bottom: 1px solid {p.line}; background: transparent;")
+        if edit_ref is not None:
+            row.setCursor(Qt.CursorShape.PointingHandCursor)
+            row.setToolTip("Kliknij, aby edytować")
+            row.setStyleSheet(
+                "QFrame { border: none; border-bottom: 1px solid " + p.line + "; background: transparent; }"
+                "QFrame:hover { background: " + p.hover + "; border-radius: 6px; }"
+            )
+            row.mousePressEvent = lambda _e, ref=edit_ref: self._open_edit_dialog(ref)
+        else:
+            row.setStyleSheet(f"border: none; border-bottom: 1px solid {p.line}; background: transparent;")
         layout = QVBoxLayout(row)
         layout.setContentsMargins(0, 4, 0, 9)
         layout.setSpacing(5)
@@ -409,10 +420,10 @@ class ClientCardPage(QWidget):
         for t in sorted(self._store.client_tasks(c.id), key=lambda t: t.due_at or _dt.max):
             due = t.due_at.strftime("%d.%m.%Y %H:%M") if t.due_at else "—"
             meta = f"{due} · {PRIORITY_LABELS[t.priority]} · {TASK_STATUS_LABELS[t.status]}"
-            entries.append((t.title, meta, t.note))
+            entries.append((t.title, meta, t.note, ("Zadanie", t)))
         return entries
 
-    def _contact_entries(self) -> list[tuple[str, str, str]]:
+    def _contact_entries(self) -> list[tuple]:
         c = self._client
         assert c is not None
         return [
@@ -420,11 +431,12 @@ class ClientCardPage(QWidget):
                 CONTACT_TYPE_LABELS.get(ct.contact_type, ct.contact_type),
                 f"{ct.contact_at.strftime('%d.%m.%Y %H:%M')} · {ct.status}",
                 ct.note,
+                ("Kontakt", ct),
             )
             for ct in self._store.client_contacts(c.id)
         ]
 
-    def _training_entries(self) -> list[tuple[str, str, str]]:
+    def _training_entries(self) -> list[tuple]:
         c = self._client
         assert c is not None
         return [
@@ -433,21 +445,40 @@ class ClientCardPage(QWidget):
                 f"{t.training_date.strftime('%d.%m.%Y')} · "
                 f"{TRAINING_TYPE_LABELS[t.training_type]} · {TRAINING_STATUS_LABELS[t.status]}",
                 t.note,
+                ("Szkolenie", t),
             )
             for t in self._store.client_trainings(c.id)
         ]
 
-    def _note_entries(self) -> list[tuple[str, str, str]]:
+    def _note_entries(self) -> list[tuple]:
         c = self._client
         assert c is not None
+        items: list[tuple] = []
+        for note in self._store.raw_notes(c.id):
+            items.append((note.created_at, "Notatka", note.content, ("Notatka", note)))
+        for ct in self._store.client_contacts(c.id):
+            if ct.note:
+                label = CONTACT_TYPE_LABELS.get(ct.contact_type, ct.contact_type)
+                items.append((ct.contact_at, f"Kontakt · {label}", ct.note, ("Kontakt", ct)))
+        items.sort(key=lambda it: it[0], reverse=True)
         return [
-            (source, created.strftime("%d.%m.%Y %H:%M"), content)
-            for created, source, content in self._store.client_notes(c.id)
+            (source, created.strftime("%d.%m.%Y %H:%M"), content, ref)
+            for created, source, content, ref in items
         ]
 
     # ------------------------------------------------------------------
-    def _open_full_view(self, title: str, entries: list[tuple[str, str, str]]) -> None:
-        ModuleViewDialog(self, self._palette, title, entries).exec()
+    def _open_full_view(self, title: str, entries: list[tuple]) -> None:
+        stripped = [(e[0], e[1], e[2]) for e in entries]
+        ModuleViewDialog(self, self._palette, title, stripped).exec()
+
+    def _open_edit_dialog(self, edit_ref) -> None:
+        if edit_ref is None or self._client is None:
+            return
+        kind, entity = edit_ref
+        dialog = DIALOGS[kind](self, self._store, self._client.id, entity)
+        if dialog.exec():
+            self.show_client(self._client.id)
+            self._on_data_changed()
 
     def _open_add_dialog(self, kind: str) -> None:
         assert self._client is not None

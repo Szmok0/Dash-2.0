@@ -147,6 +147,12 @@ class DataStore:
     def add_task(self, task: Task) -> int:
         return self._tasks.insert(task)
 
+    def update_task(self, task: Task) -> None:
+        self._tasks.update(task)
+
+    def delete_task(self, task_id: int) -> None:
+        self._tasks.delete(task_id)
+
     def set_task_done(self, task: Task, done: bool) -> None:
         if done:
             task.status = "zakonczone"
@@ -175,12 +181,24 @@ class DataStore:
     def add_contact(self, contact: Contact) -> int:
         return self._contacts.insert(contact)
 
+    def update_contact(self, contact: Contact) -> None:
+        self._contacts.update(contact)
+
+    def delete_contact(self, contact_id: int) -> None:
+        self._contacts.delete(contact_id)
+
     # --- szkolenia -----------------------------------------------------
     def client_trainings(self, client_id: int) -> list[Training]:
         return self._trainings.for_client(client_id)
 
     def add_training(self, training: Training) -> int:
         return self._trainings.insert(training)
+
+    def update_training(self, training: Training) -> None:
+        self._trainings.update(training)
+
+    def delete_training(self, training_id: int) -> None:
+        self._trainings.delete(training_id)
 
     # --- kalendarz -----------------------------------------------------
     def calendar_events(self, start: date, end: date):
@@ -195,6 +213,15 @@ class DataStore:
     # --- notatki -------------------------------------------------------
     def add_note(self, note: Note) -> int:
         return self._notes.insert(note)
+
+    def update_note(self, note: Note) -> None:
+        self._notes.update(note)
+
+    def delete_note(self, note_id: int) -> None:
+        self._notes.delete(note_id)
+
+    def raw_notes(self, client_id: int) -> list[Note]:
+        return self._notes.for_client(client_id)
 
     def client_notes(self, client_id: int) -> list[tuple[datetime, str, str]]:
         """Notatki własne + notatki z kontaktów, od najnowszej."""

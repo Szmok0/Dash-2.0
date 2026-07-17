@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Optional
 
 from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtWidgets import (
@@ -42,8 +43,9 @@ from services.store import DataStore
 class _BaseDialog(QDialog):
     """Wspólny szkielet formularza: stała szerokość, Zapisz / Anuluj / Usuń."""
 
-    def __init__(self, parent: QWidget, title: str) -> None:
+    def __init__(self, parent: QWidget, title: str, editing: bool = False) -> None:
         super().__init__(parent)
+        self._editing = editing
         self.setWindowTitle(title)
         self.setModal(True)
         self.setFixedWidth(FORM_WIDTH)
@@ -64,7 +66,9 @@ class _BaseDialog(QDialog):
         buttons = QHBoxLayout()
         delete_btn = QPushButton("Usuń")
         delete_btn.setObjectName("Danger")
-        delete_btn.setEnabled(False)  # Sprint 0: edycja istniejących wpisów poza zakresem
+        delete_btn.setEnabled(editing)  # usuwanie dostępne przy edycji istniejącego wpisu
+        delete_btn.setVisible(editing)
+        delete_btn.clicked.connect(self._delete)
         buttons.addWidget(delete_btn)
         buttons.addStretch(1)
         cancel = QPushButton("Anuluj")
@@ -75,6 +79,20 @@ class _BaseDialog(QDialog):
         save.clicked.connect(self._save)
         buttons.addWidget(save)
         self._root.addLayout(buttons)
+
+    def _delete(self) -> None:
+        from PySide6.QtWidgets import QMessageBox
+
+        reply = QMessageBox.question(
+            self, "Usuń wpis", "Czy na pewno usunąć ten wpis?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self._do_delete()
+            self.accept()
+
+    def _do_delete(self) -> None:  # nadpisywane w podklasach z edycją
+        pass
 
     def _note_field(self) -> QTextEdit:
         note = QTextEdit()
@@ -87,10 +105,11 @@ class _BaseDialog(QDialog):
 
 
 class TaskDialog(_BaseDialog):
-    def __init__(self, parent: QWidget, store: DataStore, client_id: int) -> None:
-        super().__init__(parent, "Nowe zadanie")
+    def __init__(self, parent: QWidget, store: DataStore, client_id: int, entry: Optional[Task] = None) -> None:
+        super().__init__(parent, "Edytuj zadanie" if entry else "Nowe zadanie", editing=entry is not None)
         self._store = store
         self._client_id = client_id
+        self._entry = entry
 
         self.title_edit = QLineEdit()
         self.action_box = QComboBox()
@@ -117,33 +136,52 @@ class TaskDialog(_BaseDialog):
         self.form.addRow("Status", self.status_box)
         self.form.addRow("Notatka", self.note_edit)
 
+        if entry is not None:
+            self.title_edit.setText(entry.title)
+            self.action_box.setCurrentIndex(max(0, self.action_box.findData(entry.action_type)))
+            if entry.due_at:
+                self.due_edit.setDateTime(QDateTime(entry.due_at))
+            self.priority_box.setCurrentIndex(max(0, self.priority_box.findData(entry.priority)))
+            self.status_box.setCurrentIndex(max(0, self.status_box.findData(entry.status)))
+            self.note_edit.setPlainText(entry.note)
+
     def _save(self) -> None:
         title = self.title_edit.text().strip()
         if not title:
             self.title_edit.setFocus()
             return
         status = self.status_box.currentData()
-        self._store.add_task(
-            Task(
-                id=0,
-                client_id=self._client_id,
-                title=title,
-                action_type=self.action_box.currentData(),
-                due_at=self.due_edit.dateTime().toPython(),
-                priority=self.priority_box.currentData(),
-                status=status,
-                note=self.note_edit.toPlainText().strip(),
-                completed_at=datetime.now() if status == "zakonczone" else None,
-            )
+        completed = None
+        if status == "zakonczone":
+            completed = (self._entry.completed_at if self._entry and self._entry.completed_at else datetime.now())
+        task = Task(
+            id=self._entry.id if self._entry else 0,
+            client_id=self._client_id,
+            title=title,
+            action_type=self.action_box.currentData(),
+            due_at=self.due_edit.dateTime().toPython(),
+            priority=self.priority_box.currentData(),
+            status=status,
+            note=self.note_edit.toPlainText().strip(),
+            completed_at=completed,
         )
+        if self._entry:
+            self._store.update_task(task)
+        else:
+            self._store.add_task(task)
         self.accept()
+
+    def _do_delete(self) -> None:
+        if self._entry:
+            self._store.delete_task(self._entry.id)
 
 
 class ContactDialog(_BaseDialog):
-    def __init__(self, parent: QWidget, store: DataStore, client_id: int) -> None:
-        super().__init__(parent, "Nowy kontakt")
+    def __init__(self, parent: QWidget, store: DataStore, client_id: int, entry: Optional[Contact] = None) -> None:
+        super().__init__(parent, "Edytuj kontakt" if entry else "Nowy kontakt", editing=entry is not None)
         self._store = store
         self._client_id = client_id
+        self._entry = entry
 
         self.type_box = QComboBox()
         for value in CONTACT_TYPES:
@@ -161,25 +199,38 @@ class ContactDialog(_BaseDialog):
         self.form.addRow("Status", self.status_box)
         self.form.addRow("Notatka", self.note_edit)
 
+        if entry is not None:
+            self.type_box.setCurrentIndex(max(0, self.type_box.findData(entry.contact_type)))
+            self.datetime_edit.setDateTime(QDateTime(entry.contact_at))
+            self.status_box.setCurrentIndex(max(0, self.status_box.findData(entry.status)))
+            self.note_edit.setPlainText(entry.note)
+
     def _save(self) -> None:
-        self._store.add_contact(
-            Contact(
-                id=0,
-                client_id=self._client_id,
-                contact_type=self.type_box.currentData(),
-                contact_at=self.datetime_edit.dateTime().toPython(),
-                status=self.status_box.currentData(),
-                note=self.note_edit.toPlainText().strip(),
-            )
+        contact = Contact(
+            id=self._entry.id if self._entry else 0,
+            client_id=self._client_id,
+            contact_type=self.type_box.currentData(),
+            contact_at=self.datetime_edit.dateTime().toPython(),
+            status=self.status_box.currentData(),
+            note=self.note_edit.toPlainText().strip(),
         )
+        if self._entry:
+            self._store.update_contact(contact)
+        else:
+            self._store.add_contact(contact)
         self.accept()
+
+    def _do_delete(self) -> None:
+        if self._entry:
+            self._store.delete_contact(self._entry.id)
 
 
 class TrainingDialog(_BaseDialog):
-    def __init__(self, parent: QWidget, store: DataStore, client_id: int) -> None:
-        super().__init__(parent, "Nowe szkolenie")
+    def __init__(self, parent: QWidget, store: DataStore, client_id: int, entry: Optional[Training] = None) -> None:
+        super().__init__(parent, "Edytuj szkolenie" if entry else "Nowe szkolenie", editing=entry is not None)
         self._store = store
         self._client_id = client_id
+        self._entry = entry
 
         self.name_edit = QLineEdit()
         self.date_edit = QDateTimeEdit(QDateTime.currentDateTime())
@@ -199,48 +250,67 @@ class TrainingDialog(_BaseDialog):
         self.form.addRow("Status", self.status_box)
         self.form.addRow("Notatka", self.note_edit)
 
+        if entry is not None:
+            self.name_edit.setText(entry.name)
+            self.date_edit.setDateTime(QDateTime(entry.training_date, QDateTime.currentDateTime().time()))
+            self.type_box.setCurrentIndex(max(0, self.type_box.findData(entry.training_type)))
+            self.status_box.setCurrentIndex(max(0, self.status_box.findData(entry.status)))
+            self.note_edit.setPlainText(entry.note)
+
     def _save(self) -> None:
         name = self.name_edit.text().strip()
         if not name:
             self.name_edit.setFocus()
             return
-        self._store.add_training(
-            Training(
-                id=0,
-                client_id=self._client_id,
-                name=name,
-                training_date=self.date_edit.dateTime().toPython().date(),
-                training_type=self.type_box.currentData(),
-                status=self.status_box.currentData(),
-                note=self.note_edit.toPlainText().strip(),
-            )
+        training = Training(
+            id=self._entry.id if self._entry else 0,
+            client_id=self._client_id,
+            name=name,
+            training_date=self.date_edit.dateTime().toPython().date(),
+            training_type=self.type_box.currentData(),
+            status=self.status_box.currentData(),
+            note=self.note_edit.toPlainText().strip(),
         )
+        if self._entry:
+            self._store.update_training(training)
+        else:
+            self._store.add_training(training)
         self.accept()
+
+    def _do_delete(self) -> None:
+        if self._entry:
+            self._store.delete_training(self._entry.id)
 
 
 class NoteDialog(_BaseDialog):
-    def __init__(self, parent: QWidget, store: DataStore, client_id: int) -> None:
-        super().__init__(parent, "Nowa notatka")
+    def __init__(self, parent: QWidget, store: DataStore, client_id: int, entry: Optional[Note] = None) -> None:
+        super().__init__(parent, "Edytuj notatkę" if entry else "Nowa notatka", editing=entry is not None)
         self._store = store
         self._client_id = client_id
+        self._entry = entry
         self.note_edit = self._note_field()
         self.note_edit.setMinimumHeight(140)
         self.form.addRow("Treść", self.note_edit)
+        if entry is not None:
+            self.note_edit.setPlainText(entry.content)
 
     def _save(self) -> None:
         content = self.note_edit.toPlainText().strip()
         if not content:
             self.note_edit.setFocus()
             return
-        self._store.add_note(
-            Note(
-                id=0,
-                client_id=self._client_id,
-                content=content,
-                created_at=datetime.now(),
+        if self._entry:
+            self._entry.content = content
+            self._store.update_note(self._entry)
+        else:
+            self._store.add_note(
+                Note(id=0, client_id=self._client_id, content=content, created_at=datetime.now())
             )
-        )
         self.accept()
+
+    def _do_delete(self) -> None:
+        if self._entry:
+            self._store.delete_note(self._entry.id)
 
 
 DIALOGS = {

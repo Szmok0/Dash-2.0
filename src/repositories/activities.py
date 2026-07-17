@@ -69,6 +69,21 @@ class TaskRepository:
         )
         self._conn.commit()
 
+    def update(self, task: Task) -> None:
+        self._conn.execute(
+            "UPDATE tasks SET title=?, action_type=?, due_at=?, priority=?, status=?,"
+            " note=?, completed_at=?, updated_at=? WHERE id=?",
+            (
+                task.title, task.action_type, dt_to_db(task.due_at), task.priority,
+                task.status, task.note or None, dt_to_db(task.completed_at), now_db(), task.id,
+            ),
+        )
+        self._conn.commit()
+
+    def delete(self, task_id: int) -> None:
+        self._conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        self._conn.commit()
+
 
 class ContactRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
@@ -132,6 +147,21 @@ class ContactRepository:
         self._conn.commit()
         return int(cur.lastrowid)
 
+    def update(self, contact: Contact) -> None:
+        self._conn.execute(
+            "UPDATE contacts SET contact_type=?, contact_at=?, status=?, note=?, updated_at=?"
+            " WHERE id=?",
+            (
+                contact.contact_type, dt_to_db(contact.contact_at), contact.status,
+                contact.note or None, now_db(), contact.id,
+            ),
+        )
+        self._conn.commit()
+
+    def delete(self, contact_id: int) -> None:
+        self._conn.execute("DELETE FROM contacts WHERE id = ?", (contact_id,))
+        self._conn.commit()
+
 
 class TrainingRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
@@ -157,6 +187,21 @@ class TrainingRepository:
         self._conn.commit()
         return int(cur.lastrowid)
 
+    def update(self, training: Training) -> None:
+        self._conn.execute(
+            "UPDATE trainings SET name=?, training_date=?, training_type=?, status=?, note=?,"
+            " updated_at=? WHERE id=?",
+            (
+                training.name, d_to_db(training.training_date), training.training_type,
+                training.status, training.note or None, now_db(), training.id,
+            ),
+        )
+        self._conn.commit()
+
+    def delete(self, training_id: int) -> None:
+        self._conn.execute("DELETE FROM trainings WHERE id = ?", (training_id,))
+        self._conn.commit()
+
 
 class NoteRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
@@ -177,3 +222,14 @@ class NoteRepository:
         )
         self._conn.commit()
         return int(cur.lastrowid)
+
+    def update(self, note: Note) -> None:
+        self._conn.execute(
+            "UPDATE notes SET content=?, updated_at=? WHERE id=?",
+            (note.content, now_db(), note.id),
+        )
+        self._conn.commit()
+
+    def delete(self, note_id: int) -> None:
+        self._conn.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+        self._conn.commit()
