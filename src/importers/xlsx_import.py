@@ -118,6 +118,13 @@ def _match_header(name) -> str | None:
     return None
 
 
+import re
+
+# data na początku komórki: d.m.rrrr / dd-mm-rrrr / rrrr-mm-dd (reszta, np. zakres godzin, ignorowana)
+_DATE_DMY = re.compile(r"(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})")
+_DATE_YMD = re.compile(r"(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})")
+
+
 def _parse_date(value) -> Optional[date]:
     if value is None or value == "":
         return None
@@ -126,11 +133,21 @@ def _parse_date(value) -> Optional[date]:
     if isinstance(value, date):
         return value
     text = str(value).strip()
-    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y"):
+    if not text:
+        return None
+    # wyłuskaj datę z początku komórki (dopuszcza dołączony zakres godzin, np. „01.04.2026 7:00-9:00”)
+    m = _DATE_YMD.match(text) or _DATE_DMY.match(text)
+    if not m:
+        m = _DATE_YMD.search(text) or _DATE_DMY.search(text)
+    if m:
         try:
-            return datetime.strptime(text, fmt).date()
+            if m.re is _DATE_YMD:
+                y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            else:
+                d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            return date(y, mo, d)
         except ValueError:
-            continue
+            pass
     raise ValueError(f"nieprawidłowa data: {text!r}")
 
 

@@ -69,6 +69,29 @@ def test_import_real_world_headers(store, tmp_path):
     assert [c.external_id for c in pv.new] == ["AS-2001"]
 
 
+def test_import_dates_with_time_ranges(store, tmp_path):
+    """Kolumny dat zawierające dołączony zakres godzin (realny format użytkownika)."""
+    from importers.xlsx_import import _parse_date, build_preview
+
+    from datetime import date
+
+    assert _parse_date("01.04.2026 7:00-9:00") == date(2026, 4, 1)
+    assert _parse_date("2.04.2026 7:00 -9:00") == date(2026, 4, 2)
+    assert _parse_date("02.04.2026  7:00 - 10:00") == date(2026, 4, 2)
+    assert _parse_date("1.04.2026 9:00-10:00") == date(2026, 4, 1)
+
+    headers = ["ID klienta", "Imię", "Nazwisko", "DATA REKRUTACJI", "DATA IPD"]
+    xlsx = tmp_path / "daty.xlsx"
+    _make_xlsx(xlsx, [
+        headers,
+        ["AS-3001", "Jan", "Nowak", "01.04.2026 7:00-9:00", "08.04.2026 07:00-10:00"],
+    ])
+    pv = build_preview(store, xlsx)
+    assert len(pv.errors) == 0
+    assert pv.new[0].recruitment_date == date(2026, 4, 1)
+    assert pv.new[0].ipd_date == date(2026, 4, 8)
+
+
 def test_import_apply_does_not_touch_work_data(store, tmp_path):
     from importers.xlsx_import import build_preview
 
