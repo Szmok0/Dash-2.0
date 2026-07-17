@@ -108,6 +108,20 @@ class CalendarEvent:
 
 
 @dataclass
+class ActivityRow:
+    """Wiersz historii działań w analityce (zadanie / kontakt / szkolenie)."""
+
+    when: datetime
+    client_id: int
+    external_id: str
+    client_name: str
+    kind: str  # zadanie / kontakt / szkolenie
+    description: str
+    status: str
+    has_time: bool
+
+
+@dataclass
 class Client:
     id: int
     external_id: str

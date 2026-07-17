@@ -73,6 +73,10 @@ class ClientCardPage(QWidget):
         back.clicked.connect(self._on_back)
         top.addWidget(back)
         top.addStretch(1)
+        self._pdf_btn = QPushButton("Eksport PDF")
+        self._pdf_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pdf_btn.clicked.connect(self._export_pdf)
+        top.addWidget(self._pdf_btn)
         self._attention_check = QCheckBox("Wymaga uwagi")
         self._attention_check.toggled.connect(self._toggle_attention)
         top.addWidget(self._attention_check)
@@ -458,6 +462,20 @@ class ClientCardPage(QWidget):
         for kind in ("Zadanie", "Kontakt", "Szkolenie", "Notatka"):
             menu.addAction(kind, lambda k=kind: self._open_add_dialog(k))
         menu.exec(anchor.mapToGlobal(anchor.rect().bottomLeft()))
+
+    def _export_pdf(self) -> None:
+        if self._client is None:
+            return
+        from PySide6.QtWidgets import QMessageBox
+
+        from exporters.client_pdf import export_client_card_pdf
+
+        try:
+            path = export_client_card_pdf(self._store, self._client.id)
+        except Exception as exc:  # pragma: no cover - komunikat dla użytkownika
+            QMessageBox.critical(self, "Eksport PDF", f"Nie udało się wyeksportować:\n{exc}")
+            return
+        QMessageBox.information(self, "Eksport PDF", f"Zapisano kartę klienta:\n{path}")
 
     def _pick_photo(self) -> None:
         if self._client is None:

@@ -1,4 +1,4 @@
-# Client Workbench — Sprint 1 (SQLite)
+# Client Workbench — Sprint 5 (Analityka i eksport)
 
 Lokalna aplikacja desktopowa (Windows 11, offline) do pracy z klientami.
 Zrealizowane etapy wg `docs/BUILD.md`:
@@ -6,7 +6,12 @@ Zrealizowane etapy wg `docs/BUILD.md`:
 - **Sprint 0** — klikalny shell UI (dark/light, Dashboard, karta klienta),
 - **Sprint 1** — baza SQLite (`data/client_workbench.db`, WAL, foreign keys),
   lista klientów i wyszukiwanie z bazy, ręczne dodawanie klienta
-  (ID wymagane i unikalne), zdjęcia kopiowane do `data/photos/`.
+  (ID wymagane i unikalne), zdjęcia kopiowane do `data/photos/`,
+- **Sprint 2–3** — Dashboard, zadania, kontakty, notatki i „bez kontaktu >30 dni" z realnych danych,
+- **Sprint 4** — Szkolenia oraz Kalendarz (widok miesiąca i tygodnia),
+- **Sprint 5** — Analityka (filtry po danych podstawowych, statusach i działaniach;
+  historia działań w okresie; wyniki klikalne) oraz eksport CSV/XLSX/PDF
+  i eksport karty klienta do PDF (do `data/exports/`).
 
 Architektura wg BUILD.md: UI nie wykonuje SQL — strony rozmawiają z fasadą
 `services.DataStore`, która używa repozytoriów (`repositories/`) nad SQLite
@@ -57,23 +62,20 @@ src/config.py    stałe wymiarów + ścieżki katalogu danych
 src/database/    połączenie SQLite + schema.sql
 src/models/      encje domenowe i słowniki etykiet
 src/repositories/ dostęp do tabel (clients, tasks, contacts, trainings, notes)
-src/services/    DataStore — fasada danych dla UI (w tym kopiowanie zdjęć)
+src/services/    DataStore + AnalyticsService (fasady danych dla UI)
+src/exporters/   eksport CSV/XLSX/PDF tabel i karty klienta (openpyxl, reportlab)
 src/data/        zestaw danych demonstracyjnych (seed)
 src/ui/windows/  okno główne
-src/ui/pages/    Dashboard, Klienci, Karta klienta, Ustawienia, zaślepki
+src/ui/pages/    Dashboard, Klienci, Karta klienta, Kalendarz, Analityka, Ustawienia
 src/ui/dialogs/  formularze (zadanie/kontakt/szkolenie/notatka, klient) + pełny widok modułu
 src/ui/widgets/  sidebar, header, pigułki statusów, ikony
 src/ui/styles/   palety dark/light + QSS
 tools/           seed_demo, generator zdjęcia testowego i zrzutów ekranu
-resources/       zasoby (zdjęcie testowe)
+resources/       zasoby (zdjęcie testowe, czcionka DejaVu do PDF)
 data/            baza, zdjęcia, backupy (poza repozytorium)
 ```
 
 ## Kolejne sprinty (wg BUILD.md)
 
-2. Zadania i Dashboard z realnych danych
-3. Kontakty, notatki, oś czasu, brak kontaktu >30 dni
-4. Szkolenia i Kalendarz
-5. Analityka i eksport
 6. Import XLSX, backup/restore
 7. PIN, blokada, testy, EXE/instalator

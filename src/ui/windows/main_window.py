@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from config import APP_NAME, BASE_WINDOW_SIZE, MIN_WINDOW_SIZE
 from services.store import DataStore
+from ui.pages.analytics_page import AnalyticsPage
 from ui.pages.calendar_page import CalendarPage
 from ui.pages.client_card_page import ClientCardPage
 from ui.pages.clients_page import ClientsPage
@@ -65,9 +66,7 @@ class MainWindow(QMainWindow):
         self.dashboard = DashboardPage(self.store, self.palette_theme, self.open_client)
         self.clients_page = ClientsPage(self.store, self.palette_theme, self.open_client)
         self.calendar_page = CalendarPage(self.store, self.palette_theme, self.open_client)
-        self.analytics_page = PlaceholderPage(
-            self.palette_theme, "Analityka", "Filtry, historia działań i eksport — Sprint 5."
-        )
+        self.analytics_page = AnalyticsPage(self.store, self.palette_theme, self.open_client)
         self.import_page = PlaceholderPage(
             self.palette_theme, "Import", "Import XLSX z podglądem zmian — Sprint 6."
         )
@@ -109,6 +108,8 @@ class MainWindow(QMainWindow):
             self.clients_page.refresh()
         elif key == "kalendarz":
             self.calendar_page.refresh()
+        elif key == "analityka":
+            self.analytics_page.refresh()
 
     def open_client(self, client_id: int) -> None:
         self.client_card.show_client(client_id)

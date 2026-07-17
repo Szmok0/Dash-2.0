@@ -67,6 +67,9 @@ def main() -> None:
         window.navigate("kalendarz")
         grab(window, f"kalendarz_{suffix}")
 
+        window.navigate("analityka")
+        grab(window, f"analityka_{suffix}")
+
     # bonus: motyw jasny na 1920x1080
     window.resize(1920, 1080)
     window.sidebar.set_collapsed(False)
