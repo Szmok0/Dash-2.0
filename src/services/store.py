@@ -62,6 +62,44 @@ class DataStore:
     def update_client(self, client: Client) -> None:
         self._clients.update(client)
 
+    def apply_import(self, preview) -> None:
+        """Zatwierdza import w jednej transakcji; aktualizuje tylko dane podstawowe."""
+        from importers.xlsx_import import UPDATABLE_FIELDS
+        from repositories.mappers import d_to_db, now_db
+
+        new_clients = preview.new
+        updated = preview.updated  # list[(existing, target)]
+        try:
+            self._conn.execute("BEGIN")
+            for client in new_clients:
+                self._clients.insert_in_tx(client)
+            for _existing, target in updated:
+                self._clients.update_basic_in_tx(target, UPDATABLE_FIELDS)
+            # dziennik importu
+            self._conn.execute(
+                "INSERT INTO imports (file_name, imported_at, total_rows, inserted_rows,"
+                " updated_rows, unchanged_rows, error_rows, details_json)"
+                " VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    preview.file_name, now_db(), preview.total, len(new_clients),
+                    len(updated), len(preview.unchanged),
+                    len(preview.errors) + len(preview.duplicates), None,
+                ),
+            )
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
+        # oznacz czas ostatniego importu (poza transakcją, best-effort)
+        stamp = now_db()
+        ids = [c.external_id for c in new_clients] + [t.external_id for _e, t in updated]
+        for ext in ids:
+            self._conn.execute(
+                "UPDATE clients SET last_import_at = ? WHERE external_id = ?", (stamp, ext)
+            )
+        self._conn.commit()
+        _ = d_to_db  # (import użyty pośrednio przez repo)
+
     def set_client_photo(self, client: Client, source_path: str) -> None:
         """Kopiuje zdjęcie do data/photos/client_<external_id>.<ext> (DATABASE.md)."""
         src = Path(source_path)

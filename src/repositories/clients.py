@@ -16,6 +16,21 @@ _FIELDS = (
 )
 
 
+_DATE_FIELDS = {"recruitment_date", "ipd_date", "certificate_valid_until"}
+
+
+def _field_value(c: Client, name: str):
+    """Wartość pojedynczego pola encji przygotowana do zapisu w SQLite."""
+    value = getattr(c, name)
+    if name in _DATE_FIELDS:
+        return d_to_db(value)
+    if name == "requires_attention":
+        return int(value)
+    if name == "photo_path":
+        return photo_to_db(value)
+    return value if value not in ("",) else None
+
+
 def _values(c: Client) -> tuple:
     return (
         c.external_id, c.first_name, c.last_name, c.phone or None, c.email or None,
@@ -76,3 +91,22 @@ class ClientRepository:
             _values(client) + (now_db(), client.id),
         )
         self._conn.commit()
+
+    # --- operacje bez commitu (do użycia wewnątrz transakcji importu) ---
+    def insert_in_tx(self, client: Client) -> None:
+        now = now_db()
+        placeholders = ", ".join("?" for _ in _FIELDS.split(", "))
+        self._conn.execute(
+            f"INSERT INTO clients ({_FIELDS}, created_at, updated_at)"
+            f" VALUES ({placeholders}, ?, ?)",
+            _values(client) + (now, now),
+        )
+
+    def update_basic_in_tx(self, client: Client, fields: list[str]) -> None:
+        """Aktualizuje wyłącznie wskazane pola danych podstawowych po external_id."""
+        assignments = ", ".join(f"{name} = ?" for name in fields)
+        params = tuple(_field_value(client, name) for name in fields)
+        self._conn.execute(
+            f"UPDATE clients SET {assignments}, updated_at = ? WHERE external_id = ?",
+            params + (now_db(), client.external_id),
+        )

@@ -17,7 +17,7 @@ from ui.pages.calendar_page import CalendarPage
 from ui.pages.client_card_page import ClientCardPage
 from ui.pages.clients_page import ClientsPage
 from ui.pages.dashboard_page import DashboardPage
-from ui.pages.placeholder_page import PlaceholderPage
+from ui.pages.import_page import ImportPage
 from ui.pages.settings_page import SettingsPage
 from ui.styles.theme import DARK, LIGHT, Palette, build_qss
 from ui.widgets.header import Header
@@ -67,9 +67,7 @@ class MainWindow(QMainWindow):
         self.clients_page = ClientsPage(self.store, self.palette_theme, self.open_client)
         self.calendar_page = CalendarPage(self.store, self.palette_theme, self.open_client)
         self.analytics_page = AnalyticsPage(self.store, self.palette_theme, self.open_client)
-        self.import_page = PlaceholderPage(
-            self.palette_theme, "Import", "Import XLSX z podglądem zmian — Sprint 6."
-        )
+        self.import_page = ImportPage(self.store, self.palette_theme, self._data_changed)
         self.settings_page = SettingsPage(self.palette_theme, self.toggle_theme)
         self.client_card = ClientCardPage(
             self.store, self.palette_theme, self._back_from_card, self._data_changed
