@@ -4,9 +4,11 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from config import db_path
+from config import db_path, resource_path
 
-SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
+# schemat: w repozytorium obok modułu, w EXE bundlowany do database/schema.sql
+_LOCAL_SCHEMA = Path(__file__).resolve().parent / "schema.sql"
+SCHEMA_PATH = _LOCAL_SCHEMA if _LOCAL_SCHEMA.exists() else resource_path("database", "schema.sql")
 
 
 def open_connection(path: Path | None = None) -> sqlite3.Connection:

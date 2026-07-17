@@ -10,10 +10,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication
 
-from config import APP_NAME, data_dir
+from config import APP_NAME, data_dir, resource_path
 from ui.windows.main_window import MainWindow
 
-RESOURCES = Path(__file__).resolve().parent.parent / "resources"
+RESOURCES = resource_path("resources")
 
 
 def _setup_logging() -> None:

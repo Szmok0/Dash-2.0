@@ -24,14 +24,40 @@ MAX_CONTENT_WIDTH = 1720
 
 # --- katalog danych (BUILD.md: dane poza katalogiem programu) ---
 import os
+import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 
 
+def _frozen() -> bool:
+    return getattr(sys, "frozen", False)
+
+
+def resource_base() -> Path:
+    """Katalog zasobów tylko-do-odczytu (bundlowany w EXE lub repozytorium)."""
+    if _frozen():
+        return Path(getattr(sys, "_MEIPASS", _ROOT))
+    return _ROOT
+
+
+def resource_path(*parts: str) -> Path:
+    return resource_base().joinpath(*parts)
+
+
+def _default_data_dir() -> Path:
+    """Domyślny, zapisywalny katalog danych (poza katalogiem programu)."""
+    if _frozen():
+        if sys.platform.startswith("win"):
+            base = os.environ.get("LOCALAPPDATA", str(Path.home()))
+            return Path(base) / "ClientWorkbench" / "data"
+        return Path.home() / ".client_workbench" / "data"
+    return _ROOT / "data"
+
+
 def data_dir() -> Path:
-    """Katalog danych: zmienna CW_DATA_DIR lub ./data obok repozytorium."""
-    path = Path(os.environ.get("CW_DATA_DIR", _ROOT / "data"))
+    """Katalog danych: zmienna CW_DATA_DIR lub katalog domyślny."""
+    path = Path(os.environ.get("CW_DATA_DIR", _default_data_dir()))
     path.mkdir(parents=True, exist_ok=True)
     return path
 

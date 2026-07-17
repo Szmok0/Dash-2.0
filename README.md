@@ -1,17 +1,19 @@
-# Client Workbench — Sprint 5 (Analityka i eksport)
+# Client Workbench
 
-Lokalna aplikacja desktopowa (Windows 11, offline) do pracy z klientami.
-Zrealizowane etapy wg `docs/BUILD.md`:
+Lokalna aplikacja desktopowa (Windows 11, offline, jeden użytkownik) do pracy z klientami.
+Działa bez chmury, sieci i AI. Wszystkie sprinty z `docs/BUILD.md` zrealizowane:
 
-- **Sprint 0** — klikalny shell UI (dark/light, Dashboard, karta klienta),
-- **Sprint 1** — baza SQLite (`data/client_workbench.db`, WAL, foreign keys),
-  lista klientów i wyszukiwanie z bazy, ręczne dodawanie klienta
-  (ID wymagane i unikalne), zdjęcia kopiowane do `data/photos/`,
-- **Sprint 2–3** — Dashboard, zadania, kontakty, notatki i „bez kontaktu >30 dni" z realnych danych,
+- **Sprint 0** — shell UI (dark/light, Dashboard, karta klienta),
+- **Sprint 1** — baza SQLite (WAL, foreign keys), lista i wyszukiwanie klientów,
+  ręczne dodawanie klienta (ID wymagane i unikalne), zdjęcia w `data/photos/`,
+- **Sprint 2–3** — Dashboard, zadania, kontakty, notatki, „bez kontaktu >30 dni",
 - **Sprint 4** — Szkolenia oraz Kalendarz (widok miesiąca i tygodnia),
-- **Sprint 5** — Analityka (filtry po danych podstawowych, statusach i działaniach;
-  historia działań w okresie; wyniki klikalne) oraz eksport CSV/XLSX/PDF
-  i eksport karty klienta do PDF (do `data/exports/`).
+- **Sprint 5** — Analityka (filtry, historia działań, klikalne wyniki) i eksport
+  CSV/XLSX/PDF oraz eksport karty klienta do PDF,
+- **Sprint 6** — Import XLSX po ID z podglądem (nowi/aktualizowani/bez zmian/błędy/
+  duplikaty) w jednej transakcji; kopie zapasowe ZIP (auto raz dziennie, 10 ostatnich) i przywracanie,
+- **Sprint 7** — PIN (4 cyfry, hash PBKDF2) i blokada po bezczynności, edycja/usuwanie
+  wpisów, testy (pytest), pakiet instalacyjny EXE z ikoną na pulpicie.
 
 Architektura wg BUILD.md: UI nie wykonuje SQL — strony rozmawiają z fasadą
 `services.DataStore`, która używa repozytoriów (`repositories/`) nad SQLite
@@ -41,6 +43,24 @@ pusta; dane demonstracyjne można zasiać:
 
 ```bash
 python tools/seed_demo.py
+```
+
+## Instalator Windows (EXE + ikona na pulpicie)
+
+Budowanie instalatora opisano w `packaging/README.md`. W skrócie, na Windows:
+
+```bat
+packaging\build_windows.bat
+```
+
+Powstaje `dist/installer/ClientWorkbench_Setup_1.0.0.exe` — instaluje aplikację bez
+potrzeby Pythona, tworzy skrót w menu Start i ikonę na pulpicie, a dane użytkownika
+trzyma w `%LOCALAPPDATA%\ClientWorkbench\data`.
+
+## Testy
+
+```bash
+python -m pytest tests/ -q
 ```
 
 ## Zrzuty ekranu

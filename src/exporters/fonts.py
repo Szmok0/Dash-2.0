@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-_FONTS_DIR = Path(__file__).resolve().parent.parent.parent / "resources" / "fonts"
+from config import resource_path
+
+_FONTS_DIR = resource_path("resources", "fonts")
 _registered = False
 
 FONT_NAME = "CWSans"
