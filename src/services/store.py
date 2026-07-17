@@ -30,7 +30,10 @@ from repositories.clients import ClientRepository
 
 class DataStore:
     def __init__(self, conn: Optional[sqlite3.Connection] = None) -> None:
-        self._conn = conn or open_connection()
+        self._bind(conn or open_connection())
+
+    def _bind(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
         self._clients = ClientRepository(self._conn)
         self._tasks = TaskRepository(self._conn)
         self._contacts = ContactRepository(self._conn)
@@ -38,6 +41,28 @@ class DataStore:
         self._notes = NoteRepository(self._conn)
         self._calendar = CalendarRepository(self._conn)
         self._analytics = AnalyticsRepository(self._conn)
+        from services.security import SecurityService
+
+        self.security = SecurityService(self._conn)
+
+    def checkpoint(self) -> None:
+        """Zrzuca WAL do głównego pliku bazy (spójna kopia zapasowa)."""
+        try:
+            self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except sqlite3.Error:
+            pass
+
+    def close(self) -> None:
+        self.checkpoint()
+        self._conn.close()
+
+    def reopen(self) -> None:
+        """Ponownie otwiera połączenie (po odtworzeniu z kopii zapasowej)."""
+        try:
+            self._conn.close()
+        except sqlite3.Error:
+            pass
+        self._bind(open_connection())
 
     # --- klienci -------------------------------------------------------
     @property
