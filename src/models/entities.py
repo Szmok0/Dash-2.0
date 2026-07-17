@@ -41,7 +41,20 @@ TRAINING_STATUS_LABELS = {
     "ukonczyl": "Ukończył",
     "nie_ukonczyl": "Nie ukończył",
 }
-CV_STATUS_LABELS = {"aktualne": "Aktualne", "nieaktualne": "Nieaktualne"}
+CV_STATUSES = ["brak", "do_poprawy", "aktualne"]
+CV_STATUS_LABELS = {
+    "brak": "Brak CV",
+    "do_poprawy": "CV do poprawy",
+    "aktualne": "CV aktualne",
+    "nieaktualne": "CV do poprawy",  # zgodność wstecz ze starą wartością
+}
+
+
+def normalize_cv_status(value: str) -> str:
+    """Sprowadza dowolną wartość CV do jednego z trzech stanów."""
+    if value in CV_STATUSES:
+        return value
+    return "do_poprawy" if value == "nieaktualne" else "brak"
 IPD_STATUS_LABELS = {"aktualne": "Aktualne", "nieaktualne": "Nieaktualne"}
 INTERNSHIP_LABELS = {"brak": "Brak", "w_trakcie": "W trakcie"}
 EMPLOYMENT_LABELS = {"bez_pracy": "Bez pracy", "zatrudniony": "Zatrudniony"}

@@ -58,7 +58,12 @@ class ClientRepository:
             )
             like = f"%{search}%"
             params = (like, like, like, like)
-        sql += " ORDER BY last_name, first_name"
+        # sortowanie po ID numerycznie (LP 1,2,...,88), z fallbackiem alfabetycznym
+        sql += (
+            " ORDER BY CASE WHEN external_id GLOB '[0-9]*'"
+            " THEN CAST(external_id AS INTEGER) ELSE 999999999 END,"
+            " external_id, last_name, first_name"
+        )
         return [client_from_row(r) for r in self._conn.execute(sql, params)]
 
     def get(self, client_id: int) -> Client:

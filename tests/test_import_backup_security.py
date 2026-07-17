@@ -69,6 +69,26 @@ def test_import_real_world_headers(store, tmp_path):
     assert [c.external_id for c in pv.new] == ["AS-2001"]
 
 
+def test_import_cv_three_states(store, tmp_path):
+    """CV: brak CV / CV do poprawy / CV aktualne oraz numeryczne ID."""
+    from importers.xlsx_import import _clean_id, build_preview
+
+    assert _clean_id(1.0) == "1"
+    assert _clean_id("12.0") == "12"
+    assert _clean_id(7) == "7"
+
+    xlsx = tmp_path / "cv.xlsx"
+    _make_xlsx(xlsx, [
+        ["ID klienta", "Imię", "Nazwisko", "CV"],
+        ["CV-1", "A", "B", "brak CV"],
+        ["CV-2", "C", "D", "CV do poprawy"],
+        ["CV-3", "E", "F", "CV aktualne"],
+    ])
+    pv = build_preview(store, xlsx)
+    cvs = {c.external_id: c.cv_status for c in pv.new}
+    assert cvs == {"CV-1": "brak", "CV-2": "do_poprawy", "CV-3": "aktualne"}
+
+
 def test_import_dates_with_time_ranges(store, tmp_path):
     """Kolumny dat zawierające dołączony zakres godzin (realny format użytkownika)."""
     from importers.xlsx_import import _parse_date, build_preview

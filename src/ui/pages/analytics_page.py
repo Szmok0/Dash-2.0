@@ -35,6 +35,7 @@ from exporters.table_export import TableData, export_csv, export_pdf, export_xls
 from models.entities import (
     CLIENT_STATUS_LABELS,
     CV_STATUS_LABELS,
+    CV_STATUSES,
     EMPLOYMENT_LABELS,
     INTERNSHIP_LABELS,
     IPD_STATUS_LABELS,
@@ -156,7 +157,7 @@ class AnalyticsPage(QWidget):
         self.f_text.setPlaceholderText("ID / imię / nazwisko / poszukiwana praca")
 
         self.f_client_status = self._combo(CLIENT_STATUS_LABELS)
-        self.f_cv = self._combo(CV_STATUS_LABELS)
+        self.f_cv = self._combo({v: CV_STATUS_LABELS[v] for v in CV_STATUSES})
         self.f_ipd = self._combo(IPD_STATUS_LABELS)
         self.f_internship = self._combo(INTERNSHIP_LABELS)
         self.f_employment = self._combo(EMPLOYMENT_LABELS)

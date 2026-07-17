@@ -98,6 +98,20 @@ class ImportPreview:
         return len(self.new) + len(self.updated) + len(self.unchanged) + len(self.errors) + len(self.duplicates)
 
 
+def _clean_id(value) -> str:
+    """Czyści ID: liczby (także float „1.0” z Excela) do całkowitego napisu; przycina spacje."""
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    if isinstance(value, int):
+        return str(value)
+    text = str(value).strip()
+    if text.endswith(".0") and text[:-2].isdigit():
+        return text[:-2]
+    return text
+
+
 def _norm(value) -> str:
     """Normalizuje nagłówek: zwija białe znaki (w tym łamanie wiersza) do pojedynczej spacji."""
     if value is None:
@@ -156,7 +170,16 @@ def _norm_status(field: str, value) -> Optional[str]:
     if text == "":
         return None
     if field == "cv_status":
-        return "aktualne" if text in ("aktualne", "aktualny", "tak", "1") else "nieaktualne"
+        # trójstan: brak / do poprawy / aktualne (rozpoznaje realne wpisy z bazy)
+        if "popraw" in text:
+            return "do_poprawy"
+        if "brak" in text or text in ("nie", "0", "-"):
+            return "brak"
+        if "nieaktual" in text:  # wartość zgodności wstecz
+            return "do_poprawy"
+        if "aktual" in text:
+            return "aktualne"
+        return "do_poprawy"
     if field == "employment_status":
         return "zatrudniony" if text in ("zatrudniony", "zatrudniona", "tak", "1") else "bez_pracy"
     if field == "internship_status":
@@ -211,7 +234,7 @@ def parse_workbook(path: str | Path) -> tuple[list[dict], list[RowError]]:
             else:
                 if not is_empty:  # pusta komórka nie kasuje istniejącej wartości
                     values[field_name] = str(cell).strip()
-        ext = str(values.get("external_id", "")).strip()
+        ext = _clean_id(values.get("external_id", ""))
         if not ext:
             errors.append(RowError(r_idx, "", "Brak ID klienta w wierszu."))
             continue

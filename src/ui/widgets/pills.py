@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Callable
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QPushButton
+from PySide6.QtWidgets import QComboBox, QLabel, QPushButton
 
 from ui.styles.theme import Palette
 
@@ -81,4 +81,79 @@ class QuickStatusPill(QPushButton):
             "border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600;"
             "text-align: center; }"
             f"QPushButton:hover {{ background: {with_alpha(color, 0.19)}; }}"
+        )
+
+
+class StatusDropdown(QComboBox):
+    """Status z listą wyboru (np. CV: brak / do poprawy / aktualne), kolorowany wg wartości."""
+
+    def __init__(
+        self,
+        title: str,
+        values: list[str],
+        labels: dict[str, str],
+        current: str,
+        colors: dict[str, str],
+        on_change: Callable[[str], None],
+        palette: Palette,
+    ) -> None:
+        super().__init__()
+        self._title = title
+        self._values = values
+        self._colors = colors
+        self._palette = palette
+        self._on_change = on_change
+        for v in values:
+            self.addItem(labels.get(v, v), v)
+        idx = self.findData(current)
+        if idx >= 0:
+            self.setCurrentIndex(idx)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip(f"{title} — wybierz status")
+        self.currentIndexChanged.connect(self._changed)
+        self._restyle()
+
+    def _changed(self) -> None:
+        self._restyle()
+        self._on_change(self.currentData())
+
+    def _restyle(self) -> None:
+        color = self._colors.get(self.currentData(), self._palette.text_muted)
+        self.setStyleSheet(
+            f"QComboBox {{ background: {with_alpha(color, 0.14)}; color: {color};"
+            f"border: 1px solid {with_alpha(color, 0.4)}; border-radius: 10px;"
+            "padding: 7px 12px; font-size: 12px; font-weight: 600; min-width: 128px; }"
+            "QComboBox::drop-down { border: none; width: 22px; }"
+            f"QComboBox QAbstractItemView {{ background: {self._palette.card};"
+            f"color: {self._palette.text}; selection-background-color: {self._palette.selection}; }}"
+        )
+
+
+class YesNoFlag(QPushButton):
+    """Dwustanowy przełącznik ma/nie ma — zielony (ma) / czerwony (nie ma)."""
+
+    def __init__(self, title: str, has: bool, on_toggle: Callable[[bool], None], palette: Palette) -> None:
+        super().__init__()
+        self._title = title
+        self._has = has
+        self._palette = palette
+        self._on_toggle = on_toggle
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip(f"{title}: kliknij, aby przełączyć „ma / nie ma”")
+        self.clicked.connect(self._flip)
+        self._refresh()
+
+    def _flip(self) -> None:
+        self._has = not self._has
+        self._on_toggle(self._has)
+        self._refresh()
+
+    def _refresh(self) -> None:
+        color = self._palette.green if self._has else self._palette.red
+        self.setText(self._title)
+        self.setStyleSheet(
+            f"QPushButton {{ background: {with_alpha(color, 0.16)}; color: {color};"
+            f"border: 1px solid {with_alpha(color, 0.45)}; border-radius: 9px;"
+            "padding: 6px 14px; font-size: 12px; font-weight: 700; }"
+            f"QPushButton:hover {{ background: {with_alpha(color, 0.26)}; }}"
         )

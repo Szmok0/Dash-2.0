@@ -23,6 +23,7 @@ from models.entities import (
     CLIENT_STATUS_LABELS,
     CONTACT_TYPE_LABELS,
     CV_STATUS_LABELS,
+    CV_STATUSES,
     Client,
     EMPLOYMENT_LABELS,
     INTERNSHIP_LABELS,
@@ -31,15 +32,16 @@ from models.entities import (
     TASK_STATUS_LABELS,
     TRAINING_STATUS_LABELS,
     TRAINING_TYPE_LABELS,
+    normalize_cv_status,
 )
 from services.store import DataStore
 from ui.dialogs.entry_dialogs import DIALOGS
 from ui.dialogs.module_view import ModuleViewDialog
 from ui.styles.theme import Palette
-from ui.widgets.pills import QuickStatusPill
+from ui.widgets.pills import QuickStatusPill, StatusDropdown, YesNoFlag
 
-LEFT_COLUMN_WIDTH = 290
-PHOTO_SIZE = 110
+LEFT_COLUMN_WIDTH = 300
+PHOTO_SIZE = 180
 MODULE_HEIGHT = 330
 
 
@@ -142,13 +144,43 @@ class ClientCardPage(QWidget):
 
         # --- prawa część robocza ---
         right = QVBoxLayout()
-        right.setSpacing(16)
+        right.setSpacing(14)
 
-        self._status_row = QHBoxLayout()
-        self._status_row.setSpacing(12)
+        # rząd statusów: linia główna (CV/IPD/Staż/Zatrudnienie/Klient) + linia toggle (DZ/JC/RP/Psycholog/Prawnik)
+        self._status_box = QVBoxLayout()
+        self._status_box.setSpacing(8)
+        self._status_main = QHBoxLayout()
+        self._status_main.setSpacing(10)
+        self._status_flags = QHBoxLayout()
+        self._status_flags.setSpacing(8)
+        self._status_box.addLayout(self._status_main)
+        self._status_box.addLayout(self._status_flags)
         status_wrap = QWidget()
-        status_wrap.setLayout(self._status_row)
+        status_wrap.setLayout(self._status_box)
         right.addWidget(status_wrap)
+
+        # panel Komentarz (osobne, obramowane pole — treść od razu widoczna)
+        self._comment_frame = QFrame()
+        self._comment_frame.setObjectName("Panel")
+        cf = QVBoxLayout(self._comment_frame)
+        cf.setContentsMargins(16, 10, 16, 12)
+        cf.setSpacing(4)
+        chead = QHBoxLayout()
+        ctitle = QLabel("Komentarz")
+        ctitle.setStyleSheet("font-size: 14px; font-weight: 700;")
+        chead.addWidget(ctitle)
+        chead.addStretch(1)
+        self._comment_edit_btn = QPushButton("Edytuj")
+        self._comment_edit_btn.setObjectName("Ghost")
+        self._comment_edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._comment_edit_btn.clicked.connect(self._edit_comment)
+        chead.addWidget(self._comment_edit_btn)
+        cf.addLayout(chead)
+        self._comment_lbl = QLabel("—")
+        self._comment_lbl.setWordWrap(True)
+        self._comment_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        cf.addWidget(self._comment_lbl)
+        right.addWidget(self._comment_frame)
 
         grid_scroll = QScrollArea()
         grid_scroll.setWidgetResizable(True)
@@ -179,18 +211,27 @@ class ClientCardPage(QWidget):
         assert c is not None
         p = self._palette
         _clear_layout(self._info_layout)
+        # każdy zestaw (etykieta + wartość) w osobnej, subtelnej ramce (#6)
         for label, value in self._basic_data_pairs():
+            box = QFrame()
+            box.setStyleSheet(
+                f"QFrame {{ background: {p.card}; border: 1px solid {p.line}; border-radius: 8px; }}"
+            )
+            bl = QVBoxLayout(box)
+            bl.setContentsMargins(11, 7, 11, 8)
+            bl.setSpacing(2)
             caption = QLabel(label)
             caption.setStyleSheet(
-                f"color: {p.text_muted}; font-size: 11px; text-transform: uppercase;"
-                "padding-top: 6px;"
+                f"color: {p.text_muted}; font-size: 10px; text-transform: uppercase; border: none;"
             )
             value_lbl = QLabel(value)
             value_lbl.setWordWrap(True)
             value_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            value_lbl.setStyleSheet(f"font-size: 13px; color: {p.text};")
-            self._info_layout.addWidget(caption)
-            self._info_layout.addWidget(value_lbl)
+            value_lbl.setStyleSheet(f"font-size: 13px; color: {p.text}; border: none;")
+            bl.addWidget(caption)
+            bl.addWidget(value_lbl)
+            self._info_layout.addWidget(box)
+        self._info_layout.setSpacing(8)
 
     # ------------------------------------------------------------------
     def show_client(self, client_id: int) -> None:
@@ -211,19 +252,27 @@ class ClientCardPage(QWidget):
                     )
                 )
                 self._photo.setStyleSheet(
-                    f"border-radius: 10px; border: 1px solid {self._palette.line};"
+                    f"border-radius: 12px; border: 1px solid {self._palette.line};"
                 )
         if self._photo.pixmap().isNull():
             # brak zdjęcia = pusty placeholder, bez inicjałów
             self._photo.setStyleSheet(
                 f"background: {self._palette.card}; border: 1px dashed {self._palette.line};"
-                "border-radius: 10px;"
+                "border-radius: 12px;"
             )
 
         self._photo_btn.setText("Zmień zdjęcie" if client.photo_path else "Dodaj zdjęcie")
         self._name_lbl.setText(client.full_name)
         self._id_lbl.setText(f"ID: {client.external_id}")
         self._fill_left_info()
+
+        # panel Komentarz
+        comment = client.import_comment.strip() if client.import_comment else ""
+        self._comment_lbl.setText(comment or "Brak komentarza.")
+        self._comment_lbl.setStyleSheet(
+            f"font-size: 13px; line-height: 135%; color: "
+            f"{self._palette.text if comment else self._palette.text_muted};"
+        )
 
         self._attention_check.blockSignals(True)
         self._attention_check.setChecked(client.requires_attention)
@@ -238,7 +287,25 @@ class ClientCardPage(QWidget):
         assert client is not None
         p = self._palette
 
-        _clear_layout(self._status_row)
+        _clear_layout(self._status_main)
+        _clear_layout(self._status_flags)
+
+        def save() -> None:
+            self._store.update_client(client)
+            self._on_data_changed()
+
+        # CV — rozwijane pole z trzema stanami (brak / do poprawy / aktualne)
+        def cv_changed(v: str) -> None:
+            client.cv_status = v
+            save()
+
+        self._status_main.addWidget(
+            StatusDropdown(
+                "CV", CV_STATUSES, CV_STATUS_LABELS, normalize_cv_status(client.cv_status),
+                {"brak": p.red, "do_poprawy": p.yellow, "aktualne": p.green},
+                cv_changed, p,
+            )
+        )
 
         def add_pill(title, values, labels, current, colors, attr):
             def color_for(v: str) -> str:
@@ -246,15 +313,12 @@ class ClientCardPage(QWidget):
 
             def on_change(v: str) -> None:
                 setattr(client, attr, v)
-                self._store.update_client(client)
-                self._on_data_changed()
+                save()
 
-            self._status_row.addWidget(
+            self._status_main.addWidget(
                 QuickStatusPill(title, values, labels, current, color_for, on_change)
             )
 
-        add_pill("CV", ["aktualne", "nieaktualne"], CV_STATUS_LABELS, client.cv_status,
-                 {"aktualne": p.green, "nieaktualne": p.red}, "cv_status")
         add_pill("IPD", ["aktualne", "nieaktualne"], IPD_STATUS_LABELS, client.ipd_status,
                  {"aktualne": p.green, "nieaktualne": p.red}, "ipd_status")
         add_pill("Staż", ["brak", "w_trakcie"], INTERNSHIP_LABELS, client.internship_status,
@@ -264,7 +328,21 @@ class ClientCardPage(QWidget):
                  {"bez_pracy": p.yellow, "zatrudniony": p.green}, "employment_status")
         add_pill("Klient", ["aktywny", "zamkniety"], CLIENT_STATUS_LABELS, client.client_status,
                  {"aktywny": p.accent, "zamkniety": p.text_muted}, "client_status")
-        self._status_row.addStretch(1)
+        self._status_main.addStretch(1)
+
+        # toggle zielony/czerwony: DZ / JC / RP / Psycholog / Prawnik (ma / nie ma)
+        def add_flag(title: str, attr: str) -> None:
+            def on_toggle(has: bool) -> None:
+                setattr(client, attr, "Tak" if has else "Nie")
+                save()
+
+            has = str(getattr(client, attr)).strip().lower() in ("tak", "1", "true", "x", "jest")
+            self._status_flags.addWidget(YesNoFlag(title, has, on_toggle, p))
+
+        for title, attr in (("DZ", "dz"), ("JC", "jc"), ("RP", "rp"),
+                            ("Psycholog", "psychologist"), ("Prawnik", "lawyer")):
+            add_flag(title, attr)
+        self._status_flags.addStretch(1)
 
     # ------------------------------------------------------------------
     def _build_modules(self) -> None:
@@ -390,17 +468,13 @@ class ClientCardPage(QWidget):
     def _basic_data_pairs(self) -> list[tuple[str, str]]:
         c = self._client
         assert c is not None
-        # imię, nazwisko i ID są już nad listą (przy zdjęciu)
+        # imię, nazwisko, ID są przy zdjęciu; DZ/JC/RP/Psycholog/Prawnik jako toggle w rzędzie statusów;
+        # komentarz w osobnym panelu — tutaj zostają właściwe dane podstawowe
         return [
             ("Telefon", c.phone or "—"),
             ("E-mail", c.email or "—"),
             ("Data rekrutacji", _fmt_date(c.recruitment_date)),
             ("Data IPD", _fmt_date(c.ipd_date)),
-            ("DZ", c.dz or "—"),
-            ("JC", c.jc or "—"),
-            ("RP", c.rp or "—"),
-            ("Psycholog", c.psychologist or "—"),
-            ("Prawnik", c.lawyer or "—"),
             ("Płeć", c.gender or "—"),
             ("Stopień niepełnosprawności", c.disability_degree or "—"),
             ("Symbol", c.disability_symbol or "—"),
@@ -408,7 +482,6 @@ class ClientCardPage(QWidget):
             ("Wykształcenie", c.education or "—"),
             ("Data ważności orzeczenia", _fmt_date(c.certificate_valid_until)),
             ("Poszukiwana praca", c.desired_job or "—"),
-            ("Komentarz", c.import_comment or "—"),
         ]
 
     def _task_entries(self) -> list[tuple[str, str, str]]:
@@ -507,6 +580,19 @@ class ClientCardPage(QWidget):
             QMessageBox.critical(self, "Eksport PDF", f"Nie udało się wyeksportować:\n{exc}")
             return
         QMessageBox.information(self, "Eksport PDF", f"Zapisano kartę klienta:\n{path}")
+
+    def _edit_comment(self) -> None:
+        if self._client is None:
+            return
+        from PySide6.QtWidgets import QInputDialog
+
+        text, ok = QInputDialog.getMultiLineText(
+            self, "Komentarz", "Treść komentarza:", self._client.import_comment or ""
+        )
+        if ok:
+            self._client.import_comment = text.strip()
+            self._store.update_client(self._client)
+            self.show_client(self._client.id)
 
     def _pick_photo(self) -> None:
         if self._client is None:
