@@ -50,7 +50,27 @@ HEADER_MAP: dict[str, str] = {
     "data ważności orzeczenia": "certificate_valid_until",
     "poszukiwana praca": "desired_job",
     "komentarz": "import_comment",
+    # długi nagłówek-instrukcja z realnych plików (symbole sprzężone)
+    "jeśli niepełnosprawność sprzężona wpisać symbole ręcznie": "combined_symbols",
+    "jesli niepelnosprawnosc sprzezona wpisac symbole recznie": "combined_symbols",
 }
+
+# dopasowanie po fragmencie nagłówka (gdy tekst nie jest dokładnie taki jak wyżej)
+HEADER_CONTAINS = [
+    ("asii", "external_id"),
+    ("id klienta", "external_id"),
+    ("sprzężon", "combined_symbols"),
+    ("sprzezon", "combined_symbols"),
+    ("stopień niepe", "disability_degree"),
+    ("stopien niepe", "disability_degree"),
+    ("ważności orzecz", "certificate_valid_until"),
+    ("waznosci orzecz", "certificate_valid_until"),
+    ("data rekrutacji", "recruitment_date"),
+    ("data ipd", "ipd_date"),
+    ("poszukiwana praca", "desired_job"),
+    ("wykształ", "education"),
+    ("wyksztal", "education"),
+]
 
 DATE_FIELDS = {"recruitment_date", "ipd_date", "certificate_valid_until"}
 # pola aktualizowane przy ponownym imporcie (dane podstawowe)
@@ -79,7 +99,23 @@ class ImportPreview:
 
 
 def _norm(value) -> str:
-    return str(value).strip().lower() if value is not None else ""
+    """Normalizuje nagłówek: zwija białe znaki (w tym łamanie wiersza) do pojedynczej spacji."""
+    if value is None:
+        return ""
+    return " ".join(str(value).split()).strip().lower()
+
+
+def _match_header(name) -> str | None:
+    """Zwraca atrybut encji dla nagłówka: dokładnie lub po fragmencie tekstu."""
+    key = _norm(name)
+    if not key:
+        return None
+    if key in HEADER_MAP:
+        return HEADER_MAP[key]
+    for fragment, field_name in HEADER_CONTAINS:
+        if fragment in key:
+            return field_name
+    return None
 
 
 def _parse_date(value) -> Optional[date]:
@@ -125,11 +161,14 @@ def parse_workbook(path: str | Path) -> tuple[list[dict], list[RowError]]:
 
     col_field: dict[int, str] = {}
     for idx, name in enumerate(header):
-        key = _norm(name)
-        if key in HEADER_MAP:
-            col_field[idx] = HEADER_MAP[key]
+        field_name = _match_header(name)
+        if field_name is not None and field_name not in col_field.values():
+            col_field[idx] = field_name
     if "external_id" not in col_field.values():
-        return [], [RowError(1, "", "Brak kolumny z ID klienta (np. „ID klienta”).")]
+        return [], [RowError(
+            1, "",
+            "Brak kolumny z ID klienta. Rozpoznawane nagłówki ID: „ASII LP.” lub „ID klienta”.",
+        )]
 
     parsed: list[dict] = []
     errors: list[RowError] = []

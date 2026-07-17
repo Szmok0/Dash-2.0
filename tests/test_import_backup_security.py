@@ -42,6 +42,33 @@ def test_import_preview_categories(store, tmp_path):
     assert len(pv.errors) == 1
 
 
+def test_import_real_world_headers(store, tmp_path):
+    """Nagłówki z realnego pliku: „ASII\\nLP." z łamaniem wiersza i długi nagłówek symboli."""
+    from importers.xlsx_import import build_preview, parse_workbook
+
+    real_headers = [
+        "ASII\nLP.", "IMIĘ", "NAZWISKO", "DATA REKRUTACJI", "DATA IPD", "CV", "ZATRUDNIENIE",
+        "DZ", "JC ", "RP", "PŁEĆ", "STOPIEŃ NIEPEŁNOSPRAWNOŚCI", "SYMBOL",
+        "jeśli niepełnosprawność sprzężona wpisać symbole ręcznie", "WYKSZTAŁCENIE",
+        "DATA WAŻNOŚCI ORZECZENIA", "POSZUKIWANA PRACA", "KOMENTARZ",
+    ]
+    xlsx = tmp_path / "real.xlsx"
+    _make_xlsx(xlsx, [
+        real_headers,
+        ["AS-2001", "Jan", "Testowy", "2026-03-01", "", "aktualne", "bez pracy",
+         "Tak", "Nie", "Nie", "Mężczyzna", "Umiarkowany", "05-R", "07-S", "Średnie",
+         "2027-12-31", "Magazynier", "Uwagi"],
+    ])
+    parsed, errors = parse_workbook(xlsx)
+    assert errors == []
+    assert parsed[0]["external_id"] == "AS-2001"
+    assert parsed[0]["combined_symbols"] == "07-S"
+    assert parsed[0]["desired_job"] == "Magazynier"
+
+    pv = build_preview(store, xlsx)
+    assert [c.external_id for c in pv.new] == ["AS-2001"]
+
+
 def test_import_apply_does_not_touch_work_data(store, tmp_path):
     from importers.xlsx_import import build_preview
 
