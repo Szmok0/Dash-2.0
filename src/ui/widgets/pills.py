@@ -11,7 +11,7 @@ from ui.styles.theme import Palette
 
 # Wspólne wymiary kontrolek statusu (jednolity kształt w rzędzie karty klienta)
 STATUS_PILL_HEIGHT = 50
-STATUS_PILL_MIN_WIDTH = 112
+STATUS_PILL_MIN_WIDTH = 98
 
 
 def _pill_qss(color: str) -> str:

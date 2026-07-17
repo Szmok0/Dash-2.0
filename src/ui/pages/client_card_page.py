@@ -81,9 +81,11 @@ class ClientCardPage(QWidget):
         self._pdf_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._pdf_btn.clicked.connect(self._export_pdf)
         top.addWidget(self._pdf_btn)
-        self._attention_check = QCheckBox("Wymaga uwagi")
-        self._attention_check.toggled.connect(self._toggle_attention)
-        top.addWidget(self._attention_check)
+        self._attention_btn = QPushButton("Wymaga uwagi")
+        self._attention_btn.setCheckable(True)
+        self._attention_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._attention_btn.toggled.connect(self._toggle_attention)
+        top.addWidget(self._attention_btn)
         root.addLayout(top)
 
         body = QHBoxLayout()
@@ -150,7 +152,7 @@ class ClientCardPage(QWidget):
 
         # rząd statusów: wszystkie kontrolki w jednej linii (zawijanej gdy brak miejsca)
         status_wrap = QWidget()
-        self._status_flow = FlowLayout(status_wrap, margin=0, spacing=10)
+        self._status_flow = FlowLayout(status_wrap, margin=0, spacing=7)
         right.addWidget(status_wrap)
 
         # panel Komentarz (osobne, obramowane pole — treść od razu widoczna)
@@ -246,12 +248,13 @@ class ClientCardPage(QWidget):
                     )
                 )
                 self._photo.setStyleSheet(
-                    f"border-radius: 12px; border: 1px solid {self._palette.line};"
+                    f"border-radius: 12px; border: 2px solid {self._palette.line};"
+                    f"background: {self._palette.card};"
                 )
         if self._photo.pixmap().isNull():
-            # brak zdjęcia = pusty placeholder, bez inicjałów
+            # brak zdjęcia = pusty placeholder, bez inicjałów (spójna ramka jak pola danych)
             self._photo.setStyleSheet(
-                f"background: {self._palette.card}; border: 1px dashed {self._palette.line};"
+                f"background: {self._palette.card}; border: 2px solid {self._palette.line};"
                 "border-radius: 12px;"
             )
 
@@ -260,17 +263,18 @@ class ClientCardPage(QWidget):
         self._id_lbl.setText(f"ID: {client.external_id}")
         self._fill_left_info()
 
-        # panel Komentarz
+        # panel Komentarz — pełny gdy jest treść, kompaktowy gdy pusty (#4)
         comment = client.import_comment.strip() if client.import_comment else ""
-        self._comment_lbl.setText(comment or "Brak komentarza.")
+        self._comment_lbl.setText(comment or "Brak komentarza — kliknij „Edytuj”, aby dodać.")
         self._comment_lbl.setStyleSheet(
-            f"font-size: 13px; line-height: 135%; color: "
+            f"font-size: {'13px' if comment else '12px'}; line-height: 135%; color: "
             f"{self._palette.text if comment else self._palette.text_muted};"
         )
 
-        self._attention_check.blockSignals(True)
-        self._attention_check.setChecked(client.requires_attention)
-        self._attention_check.blockSignals(False)
+        self._attention_btn.blockSignals(True)
+        self._attention_btn.setChecked(client.requires_attention)
+        self._attention_btn.blockSignals(False)
+        self._style_attention(client.requires_attention)
 
         self._build_status_row()
         self._build_modules()
@@ -286,6 +290,18 @@ class ClientCardPage(QWidget):
         def save() -> None:
             self._store.update_client(client)
             self._on_data_changed()
+
+        def caption(text: str) -> None:
+            lbl = QLabel(text)
+            lbl.setFixedHeight(50)
+            lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+            lbl.setStyleSheet(
+                f"color: {p.text_muted}; font-size: 10px; font-weight: 700;"
+                "letter-spacing: 1px; padding: 0 2px;"
+            )
+            self._status_flow.addWidget(lbl)
+
+        caption("STATUSY")
 
         # CV — pill z rozwijanym menu (3 stany), identyczny kształt jak pozostałe statusy
         def cv_changed(v: str) -> None:
@@ -322,11 +338,8 @@ class ClientCardPage(QWidget):
         add_pill("Klient", ["aktywny", "zamkniety"], CLIENT_STATUS_LABELS, client.client_status,
                  {"aktywny": p.accent, "zamkniety": p.text_muted}, "client_status")
 
-        # subtelny separator między statusami procesu a cechami tak/nie
-        divider = QFrame()
-        divider.setFixedSize(1, STATUS_DIVIDER_HEIGHT)
-        divider.setStyleSheet(f"background: {p.line}; border: none;")
-        self._status_flow.addWidget(divider)
+        # nagłówek grupy cech tak/nie
+        caption("SPECJALIŚCI")
 
         # toggle zielony/czerwony: DZ / JC / RP / Psycholog / Prawnik (ma / nie ma)
         def add_flag(title: str, attr: str) -> None:
@@ -397,7 +410,7 @@ class ClientCardPage(QWidget):
         head.addStretch(1)
 
         if add_kind is not None:
-            add_btn = QPushButton("+ Dodaj")
+            add_btn = QPushButton(f"+ {add_kind}")
             add_btn.setObjectName("Ghost")
             add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             add_btn.clicked.connect(lambda: self._open_add_dialog(add_kind))
@@ -410,8 +423,14 @@ class ClientCardPage(QWidget):
             edit_ref = entry[3] if len(entry) > 3 else None
             layout.addWidget(self._entry_row(header, meta, content, edit_ref))
         if not entries:
-            empty = QLabel("Brak wpisów")
-            empty.setStyleSheet(f"color: {p.text_muted}; font-size: 12px;")
+            empty = QLabel(
+                f"Brak wpisów.\nKliknij „+ {add_kind}”, aby dodać." if add_kind else "Brak wpisów."
+            )
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty.setStyleSheet(
+                f"color: {p.text_muted}; font-size: 12px; line-height: 145%;"
+                f"border: 1px dashed {p.line}; border-radius: 8px; padding: 18px;"
+            )
             layout.addWidget(empty)
         layout.addStretch(1)
 
@@ -604,6 +623,25 @@ class ClientCardPage(QWidget):
         self._store.set_client_photo(self._client, path)
         self.show_client(self._client.id)
 
+    def _style_attention(self, active: bool) -> None:
+        p = self._palette
+        from ui.widgets.pills import with_alpha
+
+        if active:
+            self._attention_btn.setText("● Wymaga uwagi")
+            self._attention_btn.setStyleSheet(
+                f"QPushButton {{ background: {with_alpha(p.yellow, 0.18)}; color: {p.yellow};"
+                f"border: 1px solid {with_alpha(p.yellow, 0.5)}; border-radius: 8px;"
+                "padding: 7px 14px; font-weight: 700; }}"
+            )
+        else:
+            self._attention_btn.setText("Oznacz „Wymaga uwagi”")
+            self._attention_btn.setStyleSheet(
+                f"QPushButton {{ background: {p.card}; color: {p.text_muted};"
+                f"border: 1px solid {p.line}; border-radius: 8px; padding: 7px 14px; }}"
+                f"QPushButton:hover {{ color: {p.yellow}; border-color: {with_alpha(p.yellow, 0.5)}; }}"
+            )
+
     def _toggle_attention(self, checked: bool) -> None:
         if self._client is None:
             return
@@ -611,6 +649,7 @@ class ClientCardPage(QWidget):
         if not checked:
             self._client.attention_note = ""
         self._store.update_client(self._client)
+        self._style_attention(checked)
         self._on_data_changed()
 
 

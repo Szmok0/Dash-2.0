@@ -67,6 +67,8 @@ def build_demo_data() -> DemoData:
             combined_symbols="07-S", education="Średnie",
             certificate_valid_until=date(2026, 12, 31),
             desired_job="Pracownik administracyjno-biurowy",
+            import_comment="Klientka bardzo zmotywowana. Preferuje kontakt telefoniczny po 14:00. "
+                           "Wymaga aktualizacji CV o kurs obsługi kasy fiskalnej przed rozmowami.",
         ),
         Client(
             id=2, external_id="AS-1031", first_name="Marek", last_name="Nowak",
