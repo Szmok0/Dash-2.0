@@ -33,7 +33,7 @@ class Header(QFrame):
         layout.addStretch(1)
 
         self._search = QLineEdit()
-        self._search.setPlaceholderText("Szukaj: ID lub nazwisko…")
+        self._search.setPlaceholderText("Szukaj: ID lub nazwisko…  (Ctrl+K)")
         self._search.setFixedSize(SEARCH_WIDTH, SEARCH_HEIGHT)
         self._search.setClearButtonEnabled(True)
         self._search.textChanged.connect(on_search)
@@ -79,3 +79,7 @@ class Header(QFrame):
 
     def search_text(self) -> str:
         return self._search.text()
+
+    def focus_search(self) -> None:
+        self._search.setFocus()
+        self._search.selectAll()

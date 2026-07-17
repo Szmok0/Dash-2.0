@@ -46,6 +46,7 @@ class MainWindow(QMainWindow):
         self.palette_theme: Palette = DARK
         self._dark = True
         self._current_page = "dashboard"
+        self._card_origin = "dashboard"
 
         central = QWidget()
         root = QHBoxLayout(central)
@@ -94,6 +95,12 @@ class MainWindow(QMainWindow):
 
         self.apply_theme()
         self.navigate("dashboard")
+
+        # --- skróty klawiaturowe ---
+        from PySide6.QtGui import QKeySequence, QShortcut
+
+        for seq in ("Ctrl+K", "Ctrl+F"):
+            QShortcut(QKeySequence(seq), self, activated=self.header.focus_search)
 
         # --- blokada po bezczynności ---
         self._locked = False
@@ -167,6 +174,9 @@ class MainWindow(QMainWindow):
             self.settings_page.refresh()
 
     def open_client(self, client_id: int) -> None:
+        # zapamiętaj skąd wchodzimy, aby „Wróć” cofało do właściwej sekcji
+        if self._current_page != "karta":
+            self._card_origin = self._current_page
         self.client_card.show_client(client_id)
         self._current_page = "karta"
         self.stack.setCurrentWidget(self.client_card)
@@ -175,7 +185,7 @@ class MainWindow(QMainWindow):
         self._refresh_counters()
 
     def _back_from_card(self) -> None:
-        self.navigate("dashboard")
+        self.navigate(getattr(self, "_card_origin", "dashboard"))
 
     def _data_changed(self) -> None:
         self.dashboard.refresh()

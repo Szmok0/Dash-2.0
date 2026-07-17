@@ -80,6 +80,13 @@ class ClientsPage(QWidget):
         self._table.setColumnWidth(0, 100)
         layout.addWidget(self._table, 1)
 
+        self._empty = QLabel(
+            "Brak klientów.\nDodaj klienta przyciskiem „+ Dodaj klienta” lub zaimportuj plik XLSX w sekcji Import."
+        )
+        self._empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty.setVisible(False)
+        layout.addWidget(self._empty, 1)
+
         root.addWidget(panel, 1)
         self.refresh()
 
@@ -93,7 +100,14 @@ class ClientsPage(QWidget):
 
     def refresh(self) -> None:
         p = self._palette
+        self._empty.setStyleSheet(f"color: {p.text_muted}; font-size: 14px; line-height: 150%;")
         clients = self._store.search_clients(self._filter)
+        has_any = len(self._store.clients) > 0
+        self._empty.setVisible(not has_any)
+        self._table.setVisible(has_any)
+        if not has_any:
+            self._table.setRowCount(0)
+            return
         self._table.setRowCount(len(clients))
         for row, c in enumerate(clients):
             self._table.setItem(row, 0, QTableWidgetItem(c.external_id))
