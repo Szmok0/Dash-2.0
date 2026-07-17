@@ -9,6 +9,21 @@ from PySide6.QtWidgets import QComboBox, QLabel, QPushButton
 from ui.styles.theme import Palette
 
 
+# Wspólne wymiary kontrolek statusu (jednolity kształt w rzędzie karty klienta)
+STATUS_PILL_HEIGHT = 50
+STATUS_PILL_MIN_WIDTH = 112
+
+
+def _pill_qss(color: str) -> str:
+    return (
+        f"QPushButton {{ background: {with_alpha(color, 0.12)}; color: {color};"
+        f"border: 1px solid {with_alpha(color, 0.33)};"
+        "border-radius: 10px; padding: 6px 14px; font-size: 12px; font-weight: 600;"
+        "text-align: center; }"
+        f"QPushButton:hover {{ background: {with_alpha(color, 0.19)}; }}"
+    )
+
+
 def priority_color(p: Palette, priority: str) -> str:
     return {"wysoki": p.red, "sredni": p.yellow, "niski": p.green}.get(priority, p.text_muted)
 
@@ -62,6 +77,8 @@ class QuickStatusPill(QPushButton):
         self._on_change = on_change
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip("Kliknij, aby zmienić status")
+        self.setFixedHeight(STATUS_PILL_HEIGHT)
+        self.setMinimumWidth(STATUS_PILL_MIN_WIDTH)
         self.clicked.connect(self._cycle)
         self._refresh()
 
@@ -75,17 +92,15 @@ class QuickStatusPill(QPushButton):
         color = self._color_for(self._value)
         label = self._labels.get(self._value, self._value)
         self.setText(f"{self._title}\n{label}")
-        self.setStyleSheet(
-            f"QPushButton {{ background: {with_alpha(color, 0.12)}; color: {color};"
-            f"border: 1px solid {with_alpha(color, 0.33)};"
-            "border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 600;"
-            "text-align: center; }"
-            f"QPushButton:hover {{ background: {with_alpha(color, 0.19)}; }}"
-        )
+        self.setStyleSheet(_pill_qss(color))
 
 
-class StatusDropdown(QComboBox):
-    """Status z listą wyboru (np. CV: brak / do poprawy / aktualne), kolorowany wg wartości."""
+class MenuPill(QPushButton):
+    """Status wielostanowy w kształcie pill (jak QuickStatusPill), z rozwijanym menu wyboru.
+
+    Wygląda identycznie jak pozostałe statusy (2 linie, ta sama wysokość), a klik
+    otwiera listę do wyboru — dla CV (brak / do poprawy / aktualne).
+    """
 
     def __init__(
         self,
@@ -100,37 +115,40 @@ class StatusDropdown(QComboBox):
         super().__init__()
         self._title = title
         self._values = values
+        self._labels = labels
+        self._value = current
         self._colors = colors
         self._palette = palette
         self._on_change = on_change
-        for v in values:
-            self.addItem(labels.get(v, v), v)
-        idx = self.findData(current)
-        if idx >= 0:
-            self.setCurrentIndex(idx)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip(f"{title} — wybierz status")
-        self.currentIndexChanged.connect(self._changed)
-        self._restyle()
+        self.setToolTip(f"{title} — kliknij, aby wybrać")
+        self.setFixedHeight(STATUS_PILL_HEIGHT)
+        self.setMinimumWidth(STATUS_PILL_MIN_WIDTH)
+        self.clicked.connect(self._open_menu)
+        self._refresh()
 
-    def _changed(self) -> None:
-        self._restyle()
-        self._on_change(self.currentData())
+    def _open_menu(self) -> None:
+        from PySide6.QtWidgets import QMenu
 
-    def _restyle(self) -> None:
-        color = self._colors.get(self.currentData(), self._palette.text_muted)
-        self.setStyleSheet(
-            f"QComboBox {{ background: {with_alpha(color, 0.14)}; color: {color};"
-            f"border: 1px solid {with_alpha(color, 0.4)}; border-radius: 10px;"
-            "padding: 7px 12px; font-size: 12px; font-weight: 600; min-width: 128px; }"
-            "QComboBox::drop-down { border: none; width: 22px; }"
-            f"QComboBox QAbstractItemView {{ background: {self._palette.card};"
-            f"color: {self._palette.text}; selection-background-color: {self._palette.selection}; }}"
-        )
+        menu = QMenu(self)
+        for v in self._values:
+            menu.addAction(self._labels.get(v, v), lambda val=v: self._select(val))
+        menu.exec(self.mapToGlobal(self.rect().bottomLeft()))
+
+    def _select(self, value: str) -> None:
+        self._value = value
+        self._on_change(value)
+        self._refresh()
+
+    def _refresh(self) -> None:
+        color = self._colors.get(self._value, self._palette.text_muted)
+        label = self._labels.get(self._value, self._value)
+        self.setText(f"{self._title}  ▾\n{label}")
+        self.setStyleSheet(_pill_qss(color))
 
 
 class YesNoFlag(QPushButton):
-    """Dwustanowy przełącznik ma/nie ma — zielony (ma) / czerwony (nie ma)."""
+    """Dwustanowy przełącznik ma/nie ma — 2 linie, zielony (ma) / czerwony (nie ma)."""
 
     def __init__(self, title: str, has: bool, on_toggle: Callable[[bool], None], palette: Palette) -> None:
         super().__init__()
@@ -140,6 +158,8 @@ class YesNoFlag(QPushButton):
         self._on_toggle = on_toggle
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(f"{title}: kliknij, aby przełączyć „ma / nie ma”")
+        self.setFixedHeight(STATUS_PILL_HEIGHT)
+        self.setMinimumWidth(STATUS_PILL_MIN_WIDTH)
         self.clicked.connect(self._flip)
         self._refresh()
 
@@ -150,10 +170,5 @@ class YesNoFlag(QPushButton):
 
     def _refresh(self) -> None:
         color = self._palette.green if self._has else self._palette.red
-        self.setText(self._title)
-        self.setStyleSheet(
-            f"QPushButton {{ background: {with_alpha(color, 0.16)}; color: {color};"
-            f"border: 1px solid {with_alpha(color, 0.45)}; border-radius: 9px;"
-            "padding: 6px 14px; font-size: 12px; font-weight: 700; }"
-            f"QPushButton:hover {{ background: {with_alpha(color, 0.26)}; }}"
-        )
+        self.setText(f"{self._title}\n{'Ma' if self._has else 'Nie ma'}")
+        self.setStyleSheet(_pill_qss(color))

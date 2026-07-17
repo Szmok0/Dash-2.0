@@ -38,11 +38,13 @@ from services.store import DataStore
 from ui.dialogs.entry_dialogs import DIALOGS
 from ui.dialogs.module_view import ModuleViewDialog
 from ui.styles.theme import Palette
-from ui.widgets.pills import QuickStatusPill, StatusDropdown, YesNoFlag
+from ui.widgets.flow_layout import FlowLayout
+from ui.widgets.pills import MenuPill, QuickStatusPill, YesNoFlag
 
 LEFT_COLUMN_WIDTH = 300
 PHOTO_SIZE = 180
 MODULE_HEIGHT = 330
+STATUS_DIVIDER_HEIGHT = 40
 
 
 def _fmt_date(value) -> str:
@@ -146,17 +148,9 @@ class ClientCardPage(QWidget):
         right = QVBoxLayout()
         right.setSpacing(14)
 
-        # rząd statusów: linia główna (CV/IPD/Staż/Zatrudnienie/Klient) + linia toggle (DZ/JC/RP/Psycholog/Prawnik)
-        self._status_box = QVBoxLayout()
-        self._status_box.setSpacing(8)
-        self._status_main = QHBoxLayout()
-        self._status_main.setSpacing(10)
-        self._status_flags = QHBoxLayout()
-        self._status_flags.setSpacing(8)
-        self._status_box.addLayout(self._status_main)
-        self._status_box.addLayout(self._status_flags)
+        # rząd statusów: wszystkie kontrolki w jednej linii (zawijanej gdy brak miejsca)
         status_wrap = QWidget()
-        status_wrap.setLayout(self._status_box)
+        self._status_flow = FlowLayout(status_wrap, margin=0, spacing=10)
         right.addWidget(status_wrap)
 
         # panel Komentarz (osobne, obramowane pole — treść od razu widoczna)
@@ -287,20 +281,19 @@ class ClientCardPage(QWidget):
         assert client is not None
         p = self._palette
 
-        _clear_layout(self._status_main)
-        _clear_layout(self._status_flags)
+        _clear_layout(self._status_flow)
 
         def save() -> None:
             self._store.update_client(client)
             self._on_data_changed()
 
-        # CV — rozwijane pole z trzema stanami (brak / do poprawy / aktualne)
+        # CV — pill z rozwijanym menu (3 stany), identyczny kształt jak pozostałe statusy
         def cv_changed(v: str) -> None:
             client.cv_status = v
             save()
 
-        self._status_main.addWidget(
-            StatusDropdown(
+        self._status_flow.addWidget(
+            MenuPill(
                 "CV", CV_STATUSES, CV_STATUS_LABELS, normalize_cv_status(client.cv_status),
                 {"brak": p.red, "do_poprawy": p.yellow, "aktualne": p.green},
                 cv_changed, p,
@@ -315,7 +308,7 @@ class ClientCardPage(QWidget):
                 setattr(client, attr, v)
                 save()
 
-            self._status_main.addWidget(
+            self._status_flow.addWidget(
                 QuickStatusPill(title, values, labels, current, color_for, on_change)
             )
 
@@ -328,7 +321,12 @@ class ClientCardPage(QWidget):
                  {"bez_pracy": p.yellow, "zatrudniony": p.green}, "employment_status")
         add_pill("Klient", ["aktywny", "zamkniety"], CLIENT_STATUS_LABELS, client.client_status,
                  {"aktywny": p.accent, "zamkniety": p.text_muted}, "client_status")
-        self._status_main.addStretch(1)
+
+        # subtelny separator między statusami procesu a cechami tak/nie
+        divider = QFrame()
+        divider.setFixedSize(1, STATUS_DIVIDER_HEIGHT)
+        divider.setStyleSheet(f"background: {p.line}; border: none;")
+        self._status_flow.addWidget(divider)
 
         # toggle zielony/czerwony: DZ / JC / RP / Psycholog / Prawnik (ma / nie ma)
         def add_flag(title: str, attr: str) -> None:
@@ -337,12 +335,11 @@ class ClientCardPage(QWidget):
                 save()
 
             has = str(getattr(client, attr)).strip().lower() in ("tak", "1", "true", "x", "jest")
-            self._status_flags.addWidget(YesNoFlag(title, has, on_toggle, p))
+            self._status_flow.addWidget(YesNoFlag(title, has, on_toggle, p))
 
         for title, attr in (("DZ", "dz"), ("JC", "jc"), ("RP", "rp"),
                             ("Psycholog", "psychologist"), ("Prawnik", "lawyer")):
             add_flag(title, attr)
-        self._status_flags.addStretch(1)
 
     # ------------------------------------------------------------------
     def _build_modules(self) -> None:
