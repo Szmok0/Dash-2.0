@@ -31,15 +31,16 @@ def test_import_preview_categories(store, tmp_path):
         ["AS-9000", "Jan", "Testowy", "111", "aktualne"],           # nowy
         ["AS-1024", "Anna", "Kowalska", "999888777", "aktualne"],    # aktualizacja (tel)
         ["AS-1031", existing.first_name, existing.last_name, existing.phone, "nieaktualne"],  # bez zmian
-        ["AS-9000", "Jan", "Testowy", "", ""],                       # duplikat
-        ["AS-9001", "", "BezImienia", "", ""],                       # błąd
+        ["AS-9000", "Jan", "Testowy", "", ""],                       # duplikat ID w pliku
+        ["AS-9001", "", "BezImienia", "", ""],                       # nowy (samo nazwisko — też wchodzi)
+        ["", "Ktoś", "BezID", "", ""],                               # błąd: brak ID
     ])
     pv = build_preview(store, xlsx)
-    assert [c.external_id for c in pv.new] == ["AS-9000"]
+    assert [c.external_id for c in pv.new] == ["AS-9000", "AS-9001"]
     assert [t.external_id for _e, t in pv.updated] == ["AS-1024"]
     assert [c.external_id for c in pv.unchanged] == ["AS-1031"]
     assert len(pv.duplicates) == 1
-    assert len(pv.errors) == 1
+    assert len(pv.errors) == 1  # tylko wiersz bez ID
 
 
 def test_import_real_world_headers(store, tmp_path):
@@ -87,6 +88,27 @@ def test_import_cv_three_states(store, tmp_path):
     pv = build_preview(store, xlsx)
     cvs = {c.external_id: c.cv_status for c in pv.new}
     assert cvs == {"CV-1": "brak", "CV-2": "do_poprawy", "CV-3": "aktualne"}
+
+
+def test_import_bad_date_does_not_drop_client(store, tmp_path):
+    """Błędna data w wierszu NIE może wyrzucać całego klienta (brak dziur w numeracji)."""
+    from importers.xlsx_import import build_preview
+
+    headers = ["ASII LP.", "IMIĘ", "NAZWISKO", "DATA REKRUTACJI", "DATA IPD"]
+    rows = [headers]
+    for i in range(1, 21):
+        rec = "b.d." if i in (3, 10, 17) else "01.04.2026 7:00-9:00"  # 3 błędne daty
+        rows.append([i, f"Imie{i}", f"Nazwisko{i}", rec, ""])
+    xlsx = tmp_path / "bez_dziur.xlsx"
+    _make_xlsx(xlsx, rows)
+
+    pv = build_preview(store, xlsx)
+    assert len(pv.new) == 20  # wszystkie 20 wchodzi mimo błędnych dat
+    assert len(pv.errors) == 0
+    store.apply_import(pv)
+    ids = sorted(int(c.external_id) for c in store.clients if c.external_id.isdigit())
+    assert ids == list(range(1, 21))  # brak dziur
+    assert store.find_by_external_id("3").recruitment_date is None  # tylko data pominięta
 
 
 def test_import_dates_with_time_ranges(store, tmp_path):

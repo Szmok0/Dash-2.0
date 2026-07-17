@@ -16,6 +16,7 @@ class Header(QFrame):
         palette: Palette,
         on_search: Callable[[str], None],
         on_add: Callable[[], None],
+        on_search_submit: Callable[[str], None] | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("Header")
@@ -33,10 +34,12 @@ class Header(QFrame):
         layout.addStretch(1)
 
         self._search = QLineEdit()
-        self._search.setPlaceholderText("Szukaj: ID lub nazwisko…  (Ctrl+K)")
+        self._search.setPlaceholderText("Szukaj: ID lub nazwisko…  (Ctrl+K, Enter → Klienci)")
         self._search.setFixedSize(SEARCH_WIDTH, SEARCH_HEIGHT)
         self._search.setClearButtonEnabled(True)
         self._search.textChanged.connect(on_search)
+        if on_search_submit is not None:
+            self._search.returnPressed.connect(lambda: on_search_submit(self._search.text()))
         layout.addWidget(self._search)
 
         self._active_label = QLabel()

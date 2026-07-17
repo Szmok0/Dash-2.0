@@ -216,7 +216,6 @@ def parse_workbook(path: str | Path) -> tuple[list[dict], list[RowError]]:
         if raw is None or all(c is None or str(c).strip() == "" for c in raw):
             continue
         values: dict[str, object] = {}
-        row_error: Optional[str] = None
         for idx, field_name in col_field.items():
             cell = raw[idx] if idx < len(raw) else None
             is_empty = cell is None or str(cell).strip() == ""
@@ -225,8 +224,9 @@ def parse_workbook(path: str | Path) -> tuple[list[dict], list[RowError]]:
                     continue  # pusta komórka nie nadpisuje istniejącej daty
                 try:
                     values[field_name] = _parse_date(cell)
-                except ValueError as exc:
-                    row_error = str(exc)
+                except ValueError:
+                    # błędna data NIE może wyrzucać całego klienta — pomijamy tylko to pole
+                    continue
             elif field_name in ("cv_status", "employment_status", "internship_status"):
                 norm = _norm_status(field_name, cell)
                 if norm is not None:
@@ -239,9 +239,6 @@ def parse_workbook(path: str | Path) -> tuple[list[dict], list[RowError]]:
             errors.append(RowError(r_idx, "", "Brak ID klienta w wierszu."))
             continue
         values["external_id"] = ext
-        if row_error:
-            errors.append(RowError(r_idx, ext, row_error))
-            continue
         values["_row"] = r_idx
         parsed.append(values)
 
@@ -266,11 +263,10 @@ def build_preview(store, path: str | Path) -> ImportPreview:
 
         existing = store.find_by_external_id(ext)
         if existing is None:
-            if not values.get("first_name") or not values.get("last_name"):
-                preview.errors.append(
-                    RowError(values["_row"], ext, "Nowy klient bez imienia/nazwiska.")
-                )
-                continue
+            # klient z poprawnym ID zawsze wchodzi; brak nazwiska uzupełniamy placeholderem,
+            # żeby nie powstawały „dziury" w numeracji
+            if not str(values.get("first_name", "")).strip() and not str(values.get("last_name", "")).strip():
+                values["last_name"] = "(bez nazwiska)"
             preview.new.append(_client_from_values(values))
         else:
             target = _apply_values(existing, values)

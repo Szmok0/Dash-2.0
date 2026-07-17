@@ -61,7 +61,9 @@ class MainWindow(QMainWindow):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(0)
 
-        self.header = Header(self.palette_theme, self._on_search, self._on_add)
+        self.header = Header(
+            self.palette_theme, self._on_search, self._on_add, self._on_search_submit
+        )
         right_layout.addWidget(self.header)
 
         self.stack = QStackedWidget()
@@ -206,6 +208,19 @@ class MainWindow(QMainWindow):
     def _on_search(self, text: str) -> None:
         self.dashboard.set_filter(text)
         self.clients_page.set_filter(text)
+
+    def _on_search_submit(self, text: str) -> None:
+        """Enter w wyszukiwarce: pokaż listę Klientów z filtrem (działa z każdej strony).
+
+        Jeśli filtr trafia dokładnie jednego klienta — otwórz od razu jego kartę.
+        """
+        text = text.strip()
+        self.clients_page.set_filter(text)
+        matches = self.store.search_clients(text) if text else []
+        if len(matches) == 1:
+            self.open_client(matches[0].id)
+        else:
+            self.navigate("klienci")
 
     def _on_add(self) -> None:
         if self._current_page == "karta":

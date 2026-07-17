@@ -632,7 +632,7 @@ class ClientCardPage(QWidget):
             self._attention_btn.setStyleSheet(
                 f"QPushButton {{ background: {with_alpha(p.yellow, 0.18)}; color: {p.yellow};"
                 f"border: 1px solid {with_alpha(p.yellow, 0.5)}; border-radius: 8px;"
-                "padding: 7px 14px; font-weight: 700; }}"
+                " padding: 7px 14px; font-weight: 700; }"
             )
         else:
             self._attention_btn.setText("Oznacz „Wymaga uwagi”")
