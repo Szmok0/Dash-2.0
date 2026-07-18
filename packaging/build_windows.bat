@@ -19,11 +19,15 @@ echo === [3/4] PyInstaller (onedir) ===
 pyinstaller --noconfirm --clean packaging\client_workbench.spec
 if errorlevel 1 goto :error
 
+REM dolacz do folderu aplikacji skrypt tworzacy skrot na pulpicie (wersja standalone)
+if exist "dist\ClientWorkbench" copy /y "packaging\Utworz_skrot_na_pulpicie.bat" "dist\ClientWorkbench\" >nul
+
 echo === [4/4] Inno Setup (instalator EXE) ===
 where iscc >nul 2>nul
 if errorlevel 1 (
   echo UWAGA: nie znaleziono iscc. Zainstaluj Inno Setup 6 i dodaj do PATH.
   echo Zbudowana aplikacja: dist\ClientWorkbench\ClientWorkbench.exe
+  echo Skrot na pulpicie: uruchom dist\ClientWorkbench\Utworz_skrot_na_pulpicie.bat
   goto :done
 )
 iscc packaging\installer.iss
