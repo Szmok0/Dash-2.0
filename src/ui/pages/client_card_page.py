@@ -334,7 +334,7 @@ class ClientCardPage(QWidget):
                  {"brak": p.text_muted, "w_trakcie": p.purple}, "internship_status")
         add_pill("Zatrudnienie", ["bez_pracy", "zatrudniony"], EMPLOYMENT_LABELS,
                  client.employment_status,
-                 {"bez_pracy": p.yellow, "zatrudniony": p.green}, "employment_status")
+                 {"bez_pracy": p.text_muted, "zatrudniony": p.green}, "employment_status")
         add_pill("Klient", ["aktywny", "zamkniety"], CLIENT_STATUS_LABELS, client.client_status,
                  {"aktywny": p.accent, "zamkniety": p.text_muted}, "client_status")
 

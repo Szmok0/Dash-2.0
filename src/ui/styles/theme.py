@@ -56,6 +56,29 @@ LIGHT = Palette(
     selection="#D7E3FA",
 )
 
+# Motyw dla daltonistów — kolory semantyczne z palety Okabe–Ito,
+# rozróżnialne przy najczęstszych typach daltonizmu (deuteran/protan/tritan).
+# Neutralne tła jak w trybie ciemnym; „pozytywne" niebiesko-zielone, „ostrzeżenia" pomarańcz.
+COLORBLIND = Palette(
+    bg="#171C26",
+    sidebar="#121722",
+    panel="#1D2330",
+    card="#202737",
+    line="#2B3245",
+    text="#F2F4F7",
+    text_muted="#A4ACB8",
+    accent="#56B4E9",   # sky blue — aktywny/neutralny
+    red="#D55E00",      # vermillion — ostrzeżenie/negatyw znaczący
+    yellow="#F0E442",   # jasny żółty — do poprawy/oczekuje
+    green="#009E73",    # bluish green — pozytyw
+    purple="#CC79A7",   # reddish purple — w trakcie
+    hover="#262E40",
+    selection="#2A3650",
+)
+
+THEMES: dict[str, Palette] = {"dark": DARK, "light": LIGHT, "cb": COLORBLIND}
+THEME_LABELS = {"dark": "Ciemny", "light": "Jasny", "cb": "Daltonizm (kolory bezpieczne)"}
+
 
 def build_qss(p: Palette) -> str:
     return f"""

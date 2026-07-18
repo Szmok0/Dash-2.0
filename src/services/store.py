@@ -45,6 +45,19 @@ class DataStore:
 
         self.security = SecurityService(self._conn)
 
+    # --- ustawienia aplikacji (tabela settings) ---
+    def get_setting(self, key: str, default: str = "") -> str:
+        row = self._conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else default
+
+    def set_setting(self, key: str, value: str) -> None:
+        self._conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?)"
+            " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+        self._conn.commit()
+
     def checkpoint(self) -> None:
         """Zrzuca WAL do głównego pliku bazy (spójna kopia zapasowa)."""
         try:

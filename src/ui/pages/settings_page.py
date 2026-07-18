@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from services.store import DataStore
-from ui.styles.theme import Palette
+from ui.styles.theme import THEME_LABELS, Palette
 
 
 class SettingsPage(QWidget):
@@ -24,12 +24,13 @@ class SettingsPage(QWidget):
         self,
         palette: Palette,
         store: DataStore,
-        on_toggle_theme: Callable[[], None],
+        on_set_theme: Callable[[str], None],
         on_change_pin: Optional[Callable[[], None]] = None,
     ) -> None:
         super().__init__()
         self._palette = palette
         self._store = store
+        self._on_set_theme = on_set_theme
         self._on_change_pin = on_change_pin
 
         root = QVBoxLayout(self)
@@ -47,13 +48,26 @@ class SettingsPage(QWidget):
         title.setStyleSheet("font-size: 17px; font-weight: 700;")
         al.addWidget(title)
         row = QHBoxLayout()
-        self._desc = QLabel("Motyw interfejsu (ciemny to projekt bazowy, jasny to opcja).")
+        self._desc = QLabel(
+            "Motyw interfejsu. „Daltonizm” używa kolorów bezpiecznych dla osób\n"
+            "z zaburzeniami rozróżniania barw (czerwień/zieleń)."
+        )
+        self._desc.setWordWrap(True)
         row.addWidget(self._desc)
         row.addStretch(1)
-        toggle_btn = QPushButton("Przełącz dark / light")
-        toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        toggle_btn.clicked.connect(on_toggle_theme)
-        row.addWidget(toggle_btn)
+        self._theme_combo = QComboBox()
+        for key, label in THEME_LABELS.items():
+            self._theme_combo.addItem(label, key)
+        current = self._store.get_setting("theme", "dark")
+        idx = self._theme_combo.findData(current)
+        if idx >= 0:
+            self._theme_combo.setCurrentIndex(idx)
+        self._theme_combo.setMinimumWidth(260)
+        self._theme_combo.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._theme_combo.currentIndexChanged.connect(
+            lambda: self._on_set_theme(self._theme_combo.currentData())
+        )
+        row.addWidget(self._theme_combo)
         al.addLayout(row)
         root.addWidget(appearance)
 

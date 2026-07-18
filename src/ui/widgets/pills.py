@@ -169,6 +169,7 @@ class YesNoFlag(QPushButton):
         self._refresh()
 
     def _refresh(self) -> None:
-        color = self._palette.green if self._has else self._palette.red
+        # „ma" = kolor pozytywny, „nie ma" = szary (spokojna, dwubarwna paleta)
+        color = self._palette.green if self._has else self._palette.text_muted
         self.setText(f"{self._title}\n{'Ma' if self._has else 'Nie ma'}")
         self.setStyleSheet(_pill_qss(color))

@@ -20,7 +20,7 @@ from ui.pages.clients_page import ClientsPage
 from ui.pages.dashboard_page import DashboardPage
 from ui.pages.import_page import ImportPage
 from ui.pages.settings_page import SettingsPage
-from ui.styles.theme import DARK, LIGHT, Palette, build_qss
+from ui.styles.theme import DARK, LIGHT, THEMES, Palette, build_qss
 from ui.widgets.header import Header
 from ui.widgets.sidebar import Sidebar
 
@@ -43,8 +43,10 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(*MIN_WINDOW_SIZE)
 
         self.store: DataStore = DataStore()
-        self.palette_theme: Palette = DARK
-        self._dark = True
+        self._theme_key = self.store.get_setting("theme", "dark")
+        if self._theme_key not in THEMES:
+            self._theme_key = "dark"
+        self.palette_theme: Palette = THEMES[self._theme_key]
         self._current_page = "dashboard"
         self._card_origin = "dashboard"
 
@@ -73,7 +75,7 @@ class MainWindow(QMainWindow):
         self.analytics_page = AnalyticsPage(self.store, self.palette_theme, self.open_client)
         self.import_page = ImportPage(self.store, self.palette_theme, self._data_changed)
         self.settings_page = SettingsPage(
-            self.palette_theme, self.store, self.toggle_theme, self._change_pin
+            self.palette_theme, self.store, self.set_theme, self._change_pin
         )
         self.client_card = ClientCardPage(
             self.store, self.palette_theme, self._back_from_card, self._data_changed
@@ -238,10 +240,17 @@ class MainWindow(QMainWindow):
         )
 
     # ------------------------------------------------------------------
-    def toggle_theme(self) -> None:
-        self._dark = not self._dark
-        self.palette_theme = DARK if self._dark else LIGHT
+    def set_theme(self, key: str) -> None:
+        if key not in THEMES:
+            return
+        self._theme_key = key
+        self.palette_theme = THEMES[key]
+        self.store.set_setting("theme", key)
         self.apply_theme()
+
+    def toggle_theme(self) -> None:
+        # zachowane dla zgodności (narzędzie zrzutów): przełącza ciemny <-> jasny
+        self.set_theme("light" if self._theme_key == "dark" else "dark")
 
     def apply_theme(self) -> None:
         self.setStyleSheet(build_qss(self.palette_theme))
