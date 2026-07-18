@@ -149,6 +149,8 @@ class Client:
     employment_status: str = "bez_pracy"
     internship_status: str = "brak"
     client_status: str = "aktywny"
+    dm: str = ""
+    aneks: str = ""
     dz: str = ""
     jc: str = ""
     rp: str = ""
@@ -169,3 +171,37 @@ class Client:
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+
+    @property
+    def has_name(self) -> bool:
+        """Czy klient ma prawdziwe imię/nazwisko (placeholder „(bez nazwiska)” nie liczy się)."""
+        first = (self.first_name or "").strip()
+        last = (self.last_name or "").strip()
+        if first:
+            return True
+        return bool(last) and last.lower() != "(bez nazwiska)"
+
+    @property
+    def is_blank(self) -> bool:
+        """Wiersz-widmo: brak nazwiska i jakichkolwiek danych (np. sam numer LP z importu).
+
+        Klient bez nazwiska, ale z telefonem/datami/innymi danymi, NIE jest widmem.
+        """
+        if self.has_name:
+            return False
+        return not any(
+            (
+                (self.phone or "").strip(),
+                (self.email or "").strip(),
+                self.recruitment_date,
+                self.ipd_date,
+                self.certificate_valid_until,
+                (self.desired_job or "").strip(),
+                (self.disability_degree or "").strip(),
+                (self.disability_symbol or "").strip(),
+                (self.combined_symbols or "").strip(),
+                (self.education or "").strip(),
+                (self.gender or "").strip(),
+                (self.import_comment or "").strip(),
+            )
+        )

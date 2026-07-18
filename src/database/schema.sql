@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS clients (
  employment_status TEXT NOT NULL DEFAULT 'bez_pracy',
  internship_status TEXT NOT NULL DEFAULT 'brak',
  client_status TEXT NOT NULL DEFAULT 'aktywny',
+ dm TEXT, aneks TEXT,
  dz TEXT, jc TEXT, rp TEXT, psychologist TEXT, lawyer TEXT,
  gender TEXT, disability_degree TEXT, disability_symbol TEXT,
  combined_symbols TEXT, education TEXT, certificate_valid_until TEXT,

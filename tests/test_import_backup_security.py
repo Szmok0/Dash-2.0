@@ -134,6 +134,54 @@ def test_import_dates_with_time_ranges(store, tmp_path):
     assert pv.new[0].ipd_date == date(2026, 4, 8)
 
 
+def test_import_skips_phantom_id_only_rows(store, tmp_path):
+    """Wiersze z samym numerem LP (bez nazwiska i danych) nie tworzą klientów-widm."""
+    from importers.xlsx_import import build_preview
+
+    xlsx = tmp_path / "widma.xlsx"
+    _make_xlsx(xlsx, [
+        ["ASII LP.", "IMIĘ", "NAZWISKO", "TELEFON"],
+        ["101", "Jan", "Nowak", "111"],
+        ["102", "Anna", "Kowalska", "222"],
+        ["103", "", "", ""],   # sam numer LP — widmo, pomijamy
+        ["104", "", "", ""],   # sam numer LP — widmo, pomijamy
+        ["105", "", "", "500600700"],  # bez nazwiska, ale z telefonem — zostaje
+    ])
+    pv = build_preview(store, xlsx)
+    assert [c.external_id for c in pv.new] == ["101", "102", "105"]
+    assert pv.new[-1].last_name == "(bez nazwiska)"
+
+
+def test_blank_clients_excluded_from_list_and_count(store):
+    """Klienci-widma (bez nazwiska i danych) nie liczą się na liście ani w liczniku aktywnych."""
+    from models.entities import Client
+
+    before = len(store.clients)
+    before_active = len(store.active_clients())
+
+    store.add_client(Client(id=0, external_id="Z-999", first_name="", last_name=""))  # widmo
+    assert len(store.clients) == before
+    assert len(store.active_clients()) == before_active
+
+    # realny klient bez nazwiska, ale z telefonem — widoczny i liczony
+    store.add_client(Client(id=0, external_id="Z-1000", first_name="", last_name="", phone="500"))
+    assert len(store.clients) == before + 1
+    assert len(store.active_clients()) == before_active + 1
+
+
+def test_dm_aneks_roundtrip(store):
+    """Nowe pola DM/Aneks zapisują się i odczytują z bazy."""
+    from models.entities import Client
+
+    cid = store.add_client(
+        Client(id=0, external_id="DA-1", first_name="Test", last_name="Aneksowy",
+               dm="Tak", aneks="Nie")
+    )
+    got = store.client(cid)
+    assert got.dm == "Tak"
+    assert got.aneks == "Nie"
+
+
 def test_import_apply_does_not_touch_work_data(store, tmp_path):
     from importers.xlsx_import import build_preview
 

@@ -50,6 +50,14 @@ def photo_from_db(rel_path: Optional[str]) -> Optional[str]:
     return str(p if p.is_absolute() else data_dir() / p)
 
 
+def _col(row: sqlite3.Row, key: str, default: str = "") -> str:
+    """Bezpieczny odczyt kolumny — zwraca default, gdy kolumny brak (starsza baza)."""
+    try:
+        return row[key] or default
+    except (IndexError, KeyError):
+        return default
+
+
 def client_from_row(row: sqlite3.Row) -> Client:
     return Client(
         id=row["id"],
@@ -65,6 +73,8 @@ def client_from_row(row: sqlite3.Row) -> Client:
         employment_status=row["employment_status"],
         internship_status=row["internship_status"],
         client_status=row["client_status"],
+        dm=_col(row, "dm"),
+        aneks=_col(row, "aneks"),
         dz=row["dz"] or "",
         jc=row["jc"] or "",
         rp=row["rp"] or "",

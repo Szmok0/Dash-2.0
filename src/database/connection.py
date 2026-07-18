@@ -18,5 +18,14 @@ def open_connection(path: Path | None = None) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    _migrate(conn)
     conn.commit()
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Lekkie migracje: dodaje brakujące kolumny do istniejących baz (bez utraty danych)."""
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(clients)")}
+    for column in ("dm", "aneks"):
+        if column not in existing:
+            conn.execute(f"ALTER TABLE clients ADD COLUMN {column} TEXT")

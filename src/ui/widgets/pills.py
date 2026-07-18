@@ -148,16 +148,26 @@ class MenuPill(QPushButton):
 
 
 class YesNoFlag(QPushButton):
-    """Dwustanowy przełącznik ma/nie ma — 2 linie, zielony (ma) / czerwony (nie ma)."""
+    """Dwustanowy przełącznik — 2 linie, zielony (tak) / szary (nie); etykiety konfigurowalne."""
 
-    def __init__(self, title: str, has: bool, on_toggle: Callable[[bool], None], palette: Palette) -> None:
+    def __init__(
+        self,
+        title: str,
+        has: bool,
+        on_toggle: Callable[[bool], None],
+        palette: Palette,
+        yes_label: str = "Ma",
+        no_label: str = "Nie ma",
+    ) -> None:
         super().__init__()
         self._title = title
         self._has = has
         self._palette = palette
         self._on_toggle = on_toggle
+        self._yes_label = yes_label
+        self._no_label = no_label
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip(f"{title}: kliknij, aby przełączyć „ma / nie ma”")
+        self.setToolTip(f"{title}: kliknij, aby przełączyć „{yes_label} / {no_label}”")
         self.setFixedHeight(STATUS_PILL_HEIGHT)
         self.setMinimumWidth(STATUS_PILL_MIN_WIDTH)
         self.clicked.connect(self._flip)
@@ -169,7 +179,7 @@ class YesNoFlag(QPushButton):
         self._refresh()
 
     def _refresh(self) -> None:
-        # „ma" = kolor pozytywny, „nie ma" = szary (spokojna, dwubarwna paleta)
+        # stan pozytywny = kolor pozytywny, negatywny = szary (spokojna, dwubarwna paleta)
         color = self._palette.green if self._has else self._palette.text_muted
-        self.setText(f"{self._title}\n{'Ma' if self._has else 'Nie ma'}")
+        self.setText(f"{self._title}\n{self._yes_label if self._has else self._no_label}")
         self.setStyleSheet(_pill_qss(color))

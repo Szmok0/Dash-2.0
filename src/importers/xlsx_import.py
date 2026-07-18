@@ -263,9 +263,17 @@ def build_preview(store, path: str | Path) -> ImportPreview:
 
         existing = store.find_by_external_id(ext)
         if existing is None:
-            # klient z poprawnym ID zawsze wchodzi; brak nazwiska uzupełniamy placeholderem,
-            # żeby nie powstawały „dziury" w numeracji
-            if not str(values.get("first_name", "")).strip() and not str(values.get("last_name", "")).strip():
+            has_name = bool(
+                str(values.get("first_name", "")).strip()
+                or str(values.get("last_name", "")).strip()
+            )
+            has_data = any(k not in ("external_id", "_row") for k in values)
+            # wiersz z samym numerem LP (bez nazwiska i bez danych) to „widmo" z arkusza —
+            # pomijamy, żeby nie tworzyć pustych rekordów zawyżających licznik klientów
+            if not has_name and not has_data:
+                continue
+            # rekord z danymi, ale bez nazwiska — zostaje, z czytelnym placeholderem
+            if not has_name:
                 values["last_name"] = "(bez nazwiska)"
             preview.new.append(_client_from_values(values))
         else:

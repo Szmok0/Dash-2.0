@@ -10,7 +10,7 @@ from repositories.mappers import client_from_row, d_to_db, now_db, photo_to_db
 _FIELDS = (
     "external_id, first_name, last_name, phone, email, recruitment_date, ipd_date, "
     "cv_status, ipd_status, employment_status, internship_status, client_status, "
-    "dz, jc, rp, psychologist, lawyer, gender, disability_degree, disability_symbol, "
+    "dm, aneks, dz, jc, rp, psychologist, lawyer, gender, disability_degree, disability_symbol, "
     "combined_symbols, education, certificate_valid_until, desired_job, import_comment, "
     "requires_attention, attention_note, photo_path"
 )
@@ -36,6 +36,7 @@ def _values(c: Client) -> tuple:
         c.external_id, c.first_name, c.last_name, c.phone or None, c.email or None,
         d_to_db(c.recruitment_date), d_to_db(c.ipd_date),
         c.cv_status, c.ipd_status, c.employment_status, c.internship_status, c.client_status,
+        c.dm or None, c.aneks or None,
         c.dz or None, c.jc or None, c.rp or None, c.psychologist or None, c.lawyer or None,
         c.gender or None, c.disability_degree or None, c.disability_symbol or None,
         c.combined_symbols or None, c.education or None, d_to_db(c.certificate_valid_until),
@@ -64,7 +65,11 @@ class ClientRepository:
             " THEN CAST(external_id AS INTEGER) ELSE 999999999 END,"
             " external_id, last_name, first_name"
         )
-        return [client_from_row(r) for r in self._conn.execute(sql, params)]
+        # pomiń wiersze-widma (sam numer LP bez nazwiska i danych) z importu
+        return [
+            c for c in (client_from_row(r) for r in self._conn.execute(sql, params))
+            if not c.is_blank
+        ]
 
     def get(self, client_id: int) -> Client:
         row = self._conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,)).fetchone()

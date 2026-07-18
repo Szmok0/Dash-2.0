@@ -39,7 +39,7 @@ from ui.dialogs.entry_dialogs import DIALOGS
 from ui.dialogs.module_view import ModuleViewDialog
 from ui.styles.theme import Palette
 from ui.widgets.flow_layout import FlowLayout
-from ui.widgets.pills import MenuPill, QuickStatusPill, YesNoFlag
+from ui.widgets.pills import MenuPill, QuickStatusPill, YesNoFlag, with_alpha
 
 LEFT_COLUMN_WIDTH = 300
 PHOTO_SIZE = 180
@@ -207,6 +207,9 @@ class ClientCardPage(QWidget):
         assert c is not None
         p = self._palette
         _clear_layout(self._info_layout)
+        # status klienta jako pierwsze pole (nad telefonem) — całe pole zmienia kolor,
+        # klik zmienia status; wygląd spójny z pozostałymi ramkami danych
+        self._info_layout.addWidget(self._client_status_box())
         # każdy zestaw (etykieta + wartość) w osobnej, subtelnej ramce (#6)
         for label, value in self._basic_data_pairs():
             box = QFrame()
@@ -228,6 +231,47 @@ class ClientCardPage(QWidget):
             bl.addWidget(value_lbl)
             self._info_layout.addWidget(box)
         self._info_layout.setSpacing(8)
+
+    def _client_status_box(self) -> QFrame:
+        """Pole „Status klienta" — całe obramowane pole w kolorze statusu, klik zmienia stan."""
+        c = self._client
+        assert c is not None
+        p = self._palette
+        active = c.client_status == "aktywny"
+        color = p.green if active else p.text_muted
+        box = QFrame()
+        box.setCursor(Qt.CursorShape.PointingHandCursor)
+        box.setToolTip("Kliknij, aby zmienić status (aktywny / zamknięty)")
+        box.setStyleSheet(
+            f"QFrame {{ background: {with_alpha(color, 0.16)};"
+            f" border: 1px solid {with_alpha(color, 0.55)}; border-radius: 8px; }}"
+        )
+        bl = QVBoxLayout(box)
+        bl.setContentsMargins(11, 7, 11, 8)
+        bl.setSpacing(2)
+        caption = QLabel("STATUS KLIENTA")
+        caption.setStyleSheet(
+            f"color: {color}; font-size: 10px; text-transform: uppercase;"
+            " font-weight: 700; border: none; background: transparent;"
+        )
+        value_lbl = QLabel(CLIENT_STATUS_LABELS[c.client_status])
+        value_lbl.setStyleSheet(
+            f"font-size: 13px; font-weight: 700; color: {color};"
+            " border: none; background: transparent;"
+        )
+        bl.addWidget(caption)
+        bl.addWidget(value_lbl)
+        box.mousePressEvent = lambda _e: self._toggle_client_status()
+        return box
+
+    def _toggle_client_status(self) -> None:
+        c = self._client
+        if c is None:
+            return
+        c.client_status = "zamkniety" if c.client_status == "aktywny" else "aktywny"
+        self._store.update_client(c)
+        self._fill_left_info()   # odśwież kolor pola
+        self._on_data_changed()  # odśwież licznik „Aktywni klienci" i listę
 
     # ------------------------------------------------------------------
     def show_client(self, client_id: int) -> None:
@@ -330,13 +374,28 @@ class ClientCardPage(QWidget):
 
         add_pill("IPD", ["aktualne", "nieaktualne"], IPD_STATUS_LABELS, client.ipd_status,
                  {"aktualne": p.green, "nieaktualne": p.red}, "ipd_status")
+
+        # DM / Aneks — przełącznik „zrobiony / nie ma" (za IPD), zielony/szary
+        def add_done_flag(title: str, attr: str) -> None:
+            def on_toggle(done: bool) -> None:
+                setattr(client, attr, "Tak" if done else "Nie")
+                save()
+
+            done = str(getattr(client, attr)).strip().lower() in (
+                "tak", "1", "true", "x", "jest", "zrobiony", "zrobione", "zrobiona"
+            )
+            self._status_flow.addWidget(
+                YesNoFlag(title, done, on_toggle, p, yes_label="Zrobiony", no_label="Nie ma")
+            )
+
+        add_done_flag("DM", "dm")
+        add_done_flag("Aneks", "aneks")
+
         add_pill("Staż", ["brak", "w_trakcie"], INTERNSHIP_LABELS, client.internship_status,
                  {"brak": p.text_muted, "w_trakcie": p.purple}, "internship_status")
         add_pill("Zatrudnienie", ["bez_pracy", "zatrudniony"], EMPLOYMENT_LABELS,
                  client.employment_status,
                  {"bez_pracy": p.text_muted, "zatrudniony": p.green}, "employment_status")
-        add_pill("Klient", ["aktywny", "zamkniety"], CLIENT_STATUS_LABELS, client.client_status,
-                 {"aktywny": p.accent, "zamkniety": p.text_muted}, "client_status")
 
         # nagłówek grupy cech tak/nie
         caption("SPECJALIŚCI")
