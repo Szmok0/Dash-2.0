@@ -77,6 +77,25 @@ class DataStore:
             pass
         self._bind(open_connection())
 
+    def clear_all_data(self) -> None:
+        """Usuwa wszystkich klientów i powiązane dane (zadania, kontakty, szkolenia,
+        notatki, dziennik importów) oraz zdjęcia. Ustawienia i PIN pozostają."""
+        try:
+            self._conn.execute("BEGIN")
+            # dzieci przed rodzicem (klucze obce ON DELETE RESTRICT)
+            for table in ("notes", "trainings", "contacts", "tasks", "imports", "clients"):
+                self._conn.execute(f"DELETE FROM {table}")
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
+        # usuń pliki zdjęć klientów (best-effort)
+        for f in photos_dir().glob("client_*"):
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
     # --- klienci -------------------------------------------------------
     @property
     def clients(self) -> list[Client]:

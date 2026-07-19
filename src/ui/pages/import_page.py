@@ -90,8 +90,9 @@ class ImportPage(QWidget):
         root.addWidget(panel, 1)
 
         self._hint = QLabel(
-            "Identyfikacja po kolumnie „ID klienta”. Ponowny import aktualizuje wyłącznie "
-            "dane podstawowe — zadania, kontakty, szkolenia, notatki i zdjęcie pozostają bez zmian. "
+            "Identyfikacja po kolumnie ID (rozpoznaje m.in. „ASII LP.”, „ID klienta”, „LP”, „Nr”, "
+            "„Numer”, „Poz.”). Ponowny import aktualizuje wyłącznie dane podstawowe — zadania, "
+            "kontakty, szkolenia, notatki i zdjęcie pozostają bez zmian. "
             "Klient nieobecny w pliku nie jest usuwany."
         )
         self._hint.setWordWrap(True)
@@ -142,7 +143,11 @@ class ImportPage(QWidget):
             return
         self._file_lbl.setText(self._preview.file_name)
         self._render_preview()
-        has_changes = bool(self._preview.new or self._preview.updated)
+        pv = self._preview
+        # twardy błąd (np. brak kolumny ID): nic nie da się zaimportować — pokaż wyraźny komunikat
+        if not (pv.new or pv.updated or pv.unchanged) and pv.errors:
+            QMessageBox.warning(self, "Import", pv.errors[0].message)
+        has_changes = bool(pv.new or pv.updated)
         self._confirm_btn.setEnabled(has_changes)
 
     def _render_preview(self) -> None:

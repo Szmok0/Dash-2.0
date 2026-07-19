@@ -57,8 +57,6 @@ HEADER_MAP: dict[str, str] = {
 
 # dopasowanie po fragmencie nagłówka (gdy tekst nie jest dokładnie taki jak wyżej)
 HEADER_CONTAINS = [
-    ("asii", "external_id"),
-    ("id klienta", "external_id"),
     ("sprzężon", "combined_symbols"),
     ("sprzezon", "combined_symbols"),
     ("stopień niepe", "disability_degree"),
@@ -71,6 +69,24 @@ HEADER_CONTAINS = [
     ("wykształ", "education"),
     ("wyksztal", "education"),
 ]
+
+# Rozpoznawanie kolumny ID: „mocne" nagłówki (jednoznaczne) vs „słabe" (numer porządkowy).
+# Gdy w pliku jest mocny nagłówek — używamy go; w innym wypadku bierzemy słaby (LP/Nr/…).
+_ID_STRONG_EXACT = {"id klienta", "external_id", "asii lp.", "asii lp", "id", "identyfikator"}
+_ID_STRONG_CONTAINS = ("asii", "id klient", "identyfikator")
+_ID_WEAK_EXACT = {
+    "lp", "lp.", "l.p.", "l. p.", "nr", "nr.", "numer", "poz", "poz.", "pozycja", "l/p",
+}
+_ID_RECOGNIZED = "ASII LP., ID klienta, LP, Nr, Numer, Poz., Identyfikator"
+
+
+def _is_strong_id(key: str) -> bool:
+    return bool(key) and (key in _ID_STRONG_EXACT or any(f in key for f in _ID_STRONG_CONTAINS))
+
+
+def _is_weak_id(key: str) -> bool:
+    return key in _ID_WEAK_EXACT
+
 
 DATE_FIELDS = {"recruitment_date", "ipd_date", "certificate_valid_until"}
 # pola aktualizowane przy ponownym imporcie (dane podstawowe)
@@ -200,14 +216,34 @@ def parse_workbook(path: str | Path) -> tuple[list[dict], list[RowError]]:
         return [], [RowError(1, "", "Pusty plik.")]
 
     col_field: dict[int, str] = {}
+    id_strong_idx: int | None = None
+    id_weak_idx: int | None = None
     for idx, name in enumerate(header):
+        key = _norm(name)
+        # ID rozpoznajemy osobno: preferuj „mocny” nagłówek, w razie braku weź „słaby” (LP/Nr/…)
+        if _is_strong_id(key):
+            if id_strong_idx is None:
+                id_strong_idx = idx
+            continue
+        if _is_weak_id(key):
+            if id_weak_idx is None:
+                id_weak_idx = idx
+            continue
         field_name = _match_header(name)
-        if field_name is not None and field_name not in col_field.values():
+        if field_name is not None and field_name != "external_id" and field_name not in col_field.values():
             col_field[idx] = field_name
+
+    id_idx = id_strong_idx if id_strong_idx is not None else id_weak_idx
+    if id_idx is not None:
+        col_field[id_idx] = "external_id"
     if "external_id" not in col_field.values():
+        found = [str(h).replace("\n", " ").strip() for h in header if h not in (None, "")]
+        found_txt = ", ".join(f"„{h}”" for h in found) if found else "(brak nagłówków)"
         return [], [RowError(
             1, "",
-            "Brak kolumny z ID klienta. Rozpoznawane nagłówki ID: „ASII LP.” lub „ID klienta”.",
+            "Brak kolumny z ID klienta.\n"
+            f"Znalezione nagłówki: {found_txt}.\n"
+            f"Rozpoznawane nazwy ID: {_ID_RECOGNIZED}.",
         )]
 
     parsed: list[dict] = []

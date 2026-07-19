@@ -26,12 +26,14 @@ class SettingsPage(QWidget):
         store: DataStore,
         on_set_theme: Callable[[str], None],
         on_change_pin: Optional[Callable[[], None]] = None,
+        on_data_changed: Optional[Callable[[], None]] = None,
     ) -> None:
         super().__init__()
         self._palette = palette
         self._store = store
         self._on_set_theme = on_set_theme
         self._on_change_pin = on_change_pin
+        self._on_data_changed = on_data_changed
 
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 20, 24, 20)
@@ -127,6 +129,31 @@ class SettingsPage(QWidget):
         sl.addLayout(srow)
         root.addWidget(security)
 
+        # --- dane (wyczyszczenie bazy) ---
+        data = QFrame()
+        data.setObjectName("Panel")
+        dl = QVBoxLayout(data)
+        dl.setContentsMargins(20, 16, 20, 16)
+        dl.setSpacing(12)
+        d_title = QLabel("Dane")
+        d_title.setStyleSheet("font-size: 17px; font-weight: 700;")
+        dl.addWidget(d_title)
+        self._data_desc = QLabel(
+            "Usuwa wszystkich klientów oraz powiązane dane (zadania, kontakty, szkolenia, "
+            "notatki, zdjęcia). Ustawienia i PIN pozostają. Przydatne przy przygotowaniu "
+            "aplikacji dla innego projektu. Operacji nie można cofnąć — najpierw rozważ kopię zapasową."
+        )
+        self._data_desc.setWordWrap(True)
+        dl.addWidget(self._data_desc)
+        drow = QHBoxLayout()
+        self._clear_btn = QPushButton("Wyczyść bazę")
+        self._clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._clear_btn.clicked.connect(self._clear_database)
+        drow.addWidget(self._clear_btn)
+        drow.addStretch(1)
+        dl.addLayout(drow)
+        root.addWidget(data)
+
         self.set_palette(palette)
         self.refresh()
 
@@ -136,6 +163,16 @@ class SettingsPage(QWidget):
         self._desc.setStyleSheet(f"color: {palette.text};")
         self._backup_desc.setStyleSheet(muted)
         self._pin_desc.setStyleSheet(f"color: {palette.text};")
+        self._data_desc.setStyleSheet(muted)
+        from ui.widgets.pills import with_alpha
+
+        red = palette.red
+        self._clear_btn.setStyleSheet(
+            f"QPushButton {{ background: {with_alpha(red, 0.12)}; color: {red};"
+            f" border: 1px solid {with_alpha(red, 0.45)}; border-radius: 8px;"
+            " padding: 7px 16px; font-weight: 600; }"
+            f"QPushButton:hover {{ background: {with_alpha(red, 0.2)}; }}"
+        )
 
     def refresh(self) -> None:
         from services.backup import list_backups
@@ -145,6 +182,27 @@ class SettingsPage(QWidget):
             self._backup_combo.addItem(path.name, str(path))
         if self._backup_combo.count() == 0:
             self._backup_combo.addItem("Brak kopii zapasowych", "")
+
+    def _clear_database(self) -> None:
+        count = len(self._store.clients)
+        reply = QMessageBox.warning(
+            self, "Wyczyść bazę",
+            f"Zostanie trwale usuniętych {count} klientów wraz ze wszystkimi zadaniami, "
+            "kontaktami, szkoleniami, notatkami i zdjęciami.\n\n"
+            "Tej operacji NIE można cofnąć. Kontynuować?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._store.clear_all_data()
+        except Exception as exc:  # pragma: no cover
+            QMessageBox.critical(self, "Wyczyść bazę", f"Nie udało się wyczyścić bazy:\n{exc}")
+            return
+        if self._on_data_changed:
+            self._on_data_changed()
+        QMessageBox.information(self, "Wyczyść bazę", "Baza została wyczyszczona.")
 
     # ------------------------------------------------------------------
     def _create_backup(self) -> None:

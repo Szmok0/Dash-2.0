@@ -75,7 +75,7 @@ class MainWindow(QMainWindow):
         self.analytics_page = AnalyticsPage(self.store, self.palette_theme, self.open_client)
         self.import_page = ImportPage(self.store, self.palette_theme, self._data_changed)
         self.settings_page = SettingsPage(
-            self.palette_theme, self.store, self.set_theme, self._change_pin
+            self.palette_theme, self.store, self.set_theme, self._change_pin, self._data_changed
         )
         self.client_card = ClientCardPage(
             self.store, self.palette_theme, self._back_from_card, self._data_changed

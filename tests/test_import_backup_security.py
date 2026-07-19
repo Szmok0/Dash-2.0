@@ -152,6 +152,57 @@ def test_import_skips_phantom_id_only_rows(store, tmp_path):
     assert pv.new[-1].last_name == "(bez nazwiska)"
 
 
+def test_import_recognizes_alternate_id_headers(store, tmp_path):
+    """Inne projekty nazywają kolumnę ID różnie: LP / Nr / Numer / Poz. — mają być rozpoznane."""
+    from importers.xlsx_import import parse_workbook
+
+    for n, id_header in enumerate(("LP", "Lp.", "L.P.", "Nr", "Numer", "Poz.", "ID klienta")):
+        xlsx = tmp_path / f"id_variant_{n}.xlsx"
+        _make_xlsx(xlsx, [
+            [id_header, "Imię", "Nazwisko"],
+            ["7", "Jan", "Nowak"],
+        ])
+        parsed, errors = parse_workbook(xlsx)
+        assert errors == [], f"nagłówek {id_header!r} nie rozpoznany"
+        assert parsed and parsed[0]["external_id"] == "7", f"zły ID dla {id_header!r}"
+
+
+def test_import_missing_id_lists_found_headers(store, tmp_path):
+    """Gdy nie ma kolumny ID — komunikat wymienia znalezione nagłówki (pomoc w diagnozie)."""
+    from importers.xlsx_import import parse_workbook
+
+    xlsx = tmp_path / "no_id.xlsx"
+    _make_xlsx(xlsx, [["Imię", "Nazwisko", "Telefon"], ["Jan", "Nowak", "111"]])
+    parsed, errors = parse_workbook(xlsx)
+    assert parsed == []
+    assert len(errors) == 1
+    assert "Imię" in errors[0].message and "Nazwisko" in errors[0].message
+
+
+def test_strong_id_wins_over_weak_counter(store, tmp_path):
+    """Gdy jest i „LP” (licznik) i „ID klienta” — ID bierzemy z mocnego nagłówka."""
+    from importers.xlsx_import import parse_workbook
+
+    xlsx = tmp_path / "both.xlsx"
+    _make_xlsx(xlsx, [
+        ["LP", "ID klienta", "Imię", "Nazwisko"],
+        ["1", "AS-500", "Jan", "Nowak"],
+    ])
+    parsed, errors = parse_workbook(xlsx)
+    assert errors == []
+    assert parsed[0]["external_id"] == "AS-500"
+
+
+def test_clear_all_data_wipes_clients_keeps_settings(store):
+    """Wyczyszczenie bazy usuwa klientów i dane, ale zachowuje ustawienia (np. motyw)."""
+    store.set_setting("theme", "cb")
+    assert len(store.clients) > 0
+    store.clear_all_data()
+    assert store.clients == []
+    assert store.active_clients() == []
+    assert store.get_setting("theme") == "cb"
+
+
 def test_blank_clients_excluded_from_list_and_count(store):
     """Klienci-widma (bez nazwiska i danych) nie liczą się na liście ani w liczniku aktywnych."""
     from models.entities import Client
