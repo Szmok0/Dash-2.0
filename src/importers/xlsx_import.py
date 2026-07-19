@@ -80,12 +80,19 @@ _ID_WEAK_EXACT = {
 _ID_RECOGNIZED = "ASII LP., ID klienta, LP, Nr, Numer, Poz., Identyfikator"
 
 
+def _looks_like_lp(key: str) -> bool:
+    """Nagłówek typu „<kod projektu> LP.” (np. ASII LP., AZ LP.) lub samo „LP” — to numer/ID."""
+    tokens = key.replace(".", " ").split()
+    return bool(tokens) and tokens[-1] == "lp"
+
+
 def _is_strong_id(key: str) -> bool:
     return bool(key) and (key in _ID_STRONG_EXACT or any(f in key for f in _ID_STRONG_CONTAINS))
 
 
 def _is_weak_id(key: str) -> bool:
-    return key in _ID_WEAK_EXACT
+    # numer porządkowy: „LP”, „<prefiks> LP.” (ASII/AZ/…), „Nr”, „Numer”, „Poz.”
+    return key in _ID_WEAK_EXACT or _looks_like_lp(key)
 
 
 DATE_FIELDS = {"recruitment_date", "ipd_date", "certificate_valid_until"}

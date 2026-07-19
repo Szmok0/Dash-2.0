@@ -167,6 +167,21 @@ def test_import_recognizes_alternate_id_headers(store, tmp_path):
         assert parsed and parsed[0]["external_id"] == "7", f"zły ID dla {id_header!r}"
 
 
+def test_import_project_prefix_lp_headers(store, tmp_path):
+    """Kolumna ID różnych projektów: „ASII LP.”, „AZ LP.” (z łamaniem wiersza) i inne prefiksy."""
+    from importers.xlsx_import import parse_workbook
+
+    for id_header in ("AZ\nLP.", "ASII\nLP.", "BC LP.", "AZ LP."):
+        xlsx = tmp_path / f"lp_{abs(hash(id_header))}.xlsx"
+        _make_xlsx(xlsx, [
+            [id_header, "IMIĘ", "NAZWISKO", "DATA REKRUTACJI"],
+            [5, "Jan", "Nowak", "01.04.2026"],
+        ])
+        parsed, errors = parse_workbook(xlsx)
+        assert errors == [], f"nagłówek {id_header!r} nie rozpoznany"
+        assert parsed[0]["external_id"] == "5", f"zły ID dla {id_header!r}"
+
+
 def test_import_missing_id_lists_found_headers(store, tmp_path):
     """Gdy nie ma kolumny ID — komunikat wymienia znalezione nagłówki (pomoc w diagnozie)."""
     from importers.xlsx_import import parse_workbook
