@@ -1,7 +1,7 @@
 """Okno główne: sidebar + header + przełączane strony (QStackedWidget)."""
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QTimer
+from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
@@ -106,13 +106,11 @@ class MainWindow(QMainWindow):
         for seq in ("Ctrl+K", "Ctrl+F"):
             QShortcut(QKeySequence(seq), self, activated=self.header.focus_search)
 
-        # --- blokada po bezczynności ---
+        # --- PIN tylko przy uruchomieniu programu (bez blokady po bezczynności) ---
+        # Celowo NIE uruchamiamy timera bezczynności — PIN pojawia się raz, na starcie,
+        # i nie wyskakuje ponownie dopóki program działa.
         self._locked = False
-        self._idle_timer = QTimer(self)
-        self._idle_timer.setInterval(30_000)  # sprawdzaj co 30 s
-        self._idle_timer.timeout.connect(self._check_idle)
         self._idle_ms = 0
-        self._idle_timer.start()
 
     # ------------------------------------------------------------------
     def start_security(self) -> None:
@@ -136,20 +134,8 @@ class MainWindow(QMainWindow):
         self._locked = False
         self._idle_ms = 0
 
-    def _check_idle(self) -> None:
-        if self._locked or not self.store.security.has_pin():
-            return
-        self._idle_ms += self._idle_timer.interval()
-        limit = self.store.security.idle_lock_minutes() * 60_000
-        if self._idle_ms >= limit:
-            self._lock()
-
     def eventFilter(self, obj, event):  # noqa: N802 (Qt API)
-        if event.type() in (
-            QEvent.Type.MouseMove, QEvent.Type.KeyPress,
-            QEvent.Type.MouseButtonPress, QEvent.Type.Wheel,
-        ):
-            self._idle_ms = 0
+        # zachowane dla zgodności (app.py instaluje filtr) — brak blokady po bezczynności
         return super().eventFilter(obj, event)
 
     def _change_pin(self) -> None:

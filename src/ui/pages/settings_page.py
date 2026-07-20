@@ -119,7 +119,7 @@ class SettingsPage(QWidget):
         s_title.setStyleSheet("font-size: 17px; font-weight: 700;")
         sl.addWidget(s_title)
         srow = QHBoxLayout()
-        self._pin_desc = QLabel("PIN (4 cyfry) chroni dostęp i blokuje aplikację po bezczynności.")
+        self._pin_desc = QLabel("PIN (4 cyfry) chroni dostęp — pojawia się tylko przy uruchomieniu programu.")
         srow.addWidget(self._pin_desc)
         srow.addStretch(1)
         pin_btn = QPushButton("Zmień PIN")

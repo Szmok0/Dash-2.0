@@ -169,6 +169,13 @@ class DataStore:
         client.photo_path = str(target)
         self._clients.update(client)
 
+    def remove_client_photo(self, client: Client) -> None:
+        """Usuwa zdjęcie klienta (plik i powiązanie w bazie)."""
+        for old in photos_dir().glob(f"client_{client.external_id}.*"):
+            old.unlink(missing_ok=True)
+        client.photo_path = None
+        self._clients.update(client)
+
     # --- zadania -------------------------------------------------------
     def client_tasks(self, client_id: int) -> list[Task]:
         return self._tasks.for_client(client_id)

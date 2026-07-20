@@ -113,9 +113,14 @@ class ClientCardPage(QWidget):
         self._photo_btn.setObjectName("Ghost")
         self._photo_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._photo_btn.clicked.connect(self._pick_photo)
+        self._photo_remove_btn = QPushButton("Usuń")
+        self._photo_remove_btn.setObjectName("Ghost")
+        self._photo_remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._photo_remove_btn.clicked.connect(self._remove_photo)
         photo_btn_row = QHBoxLayout()
         photo_btn_row.addStretch(1)
         photo_btn_row.addWidget(self._photo_btn)
+        photo_btn_row.addWidget(self._photo_remove_btn)
         photo_btn_row.addStretch(1)
         left_layout.addLayout(photo_btn_row)
 
@@ -176,16 +181,28 @@ class ClientCardPage(QWidget):
         self._comment_lbl.setWordWrap(True)
         self._comment_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         cf.addWidget(self._comment_lbl)
-        right.addWidget(self._comment_frame)
 
-        grid_scroll = QScrollArea()
-        grid_scroll.setWidgetResizable(True)
+        # Sekcja przewijana pionowo: komentarz + moduły. Dzięki temu długi komentarz
+        # nie zasłania zadań/kontaktów/szkoleń/notatek — całość można przewinąć w dół.
+        content_scroll = QScrollArea()
+        content_scroll.setWidgetResizable(True)
+        content_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        content_scroll.setStyleSheet(
+            "QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }"
+        )
+        content_host = QWidget()
+        content_v = QVBoxLayout(content_host)
+        content_v.setContentsMargins(0, 0, 6, 0)
+        content_v.setSpacing(14)
+        content_v.addWidget(self._comment_frame)
         grid_host = QWidget()
         self._grid = QGridLayout(grid_host)
         self._grid.setContentsMargins(0, 0, 0, 0)
         self._grid.setSpacing(16)
-        grid_scroll.setWidget(grid_host)
-        right.addWidget(grid_scroll, 1)
+        content_v.addWidget(grid_host)
+        content_v.addStretch(1)
+        content_scroll.setWidget(content_host)
+        right.addWidget(content_scroll, 1)
 
         body.addLayout(right, 1)
         root.addLayout(body, 1)
@@ -303,6 +320,7 @@ class ClientCardPage(QWidget):
             )
 
         self._photo_btn.setText("Zmień zdjęcie" if client.photo_path else "Dodaj zdjęcie")
+        self._photo_remove_btn.setVisible(bool(client.photo_path))
         self._name_lbl.setText(client.full_name)
         self._id_lbl.setText(f"ID: {client.external_id}")
         self._fill_left_info()
@@ -396,22 +414,6 @@ class ClientCardPage(QWidget):
         add_pill("Zatrudnienie", ["bez_pracy", "zatrudniony"], EMPLOYMENT_LABELS,
                  client.employment_status,
                  {"bez_pracy": p.text_muted, "zatrudniony": p.green}, "employment_status")
-
-        # nagłówek grupy cech tak/nie
-        caption("SPECJALIŚCI")
-
-        # toggle zielony/czerwony: DZ / JC / RP / Psycholog / Prawnik (ma / nie ma)
-        def add_flag(title: str, attr: str) -> None:
-            def on_toggle(has: bool) -> None:
-                setattr(client, attr, "Tak" if has else "Nie")
-                save()
-
-            has = str(getattr(client, attr)).strip().lower() in ("tak", "1", "true", "x", "jest")
-            self._status_flow.addWidget(YesNoFlag(title, has, on_toggle, p))
-
-        for title, attr in (("DZ", "dz"), ("JC", "jc"), ("RP", "rp"),
-                            ("Psycholog", "psychologist"), ("Prawnik", "lawyer")):
-            add_flag(title, attr)
 
     # ------------------------------------------------------------------
     def _build_modules(self) -> None:
@@ -659,13 +661,42 @@ class ClientCardPage(QWidget):
     def _edit_comment(self) -> None:
         if self._client is None:
             return
-        from PySide6.QtWidgets import QInputDialog
-
-        text, ok = QInputDialog.getMultiLineText(
-            self, "Komentarz", "Treść komentarza:", self._client.import_comment or ""
+        from PySide6.QtWidgets import (
+            QDialog, QDialogButtonBox, QLabel, QTextEdit, QVBoxLayout,
         )
-        if ok:
-            self._client.import_comment = text.strip()
+
+        p = self._palette
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Komentarz")
+        dialog.setMinimumSize(720, 460)  # duże, prostokątne pole do wygodnego pisania
+        dialog.setStyleSheet(f"QDialog {{ background: {p.panel}; }}")
+        lay = QVBoxLayout(dialog)
+        lay.setContentsMargins(20, 18, 20, 16)
+        lay.setSpacing(12)
+        head = QLabel(f"Komentarz — {self._client.full_name}")
+        head.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {p.text};")
+        lay.addWidget(head)
+        editor = QTextEdit()
+        editor.setPlainText(self._client.import_comment or "")
+        editor.setAcceptRichText(False)
+        editor.setStyleSheet(
+            f"QTextEdit {{ background: {p.card}; color: {p.text};"
+            f" border: 1px solid {p.line}; border-radius: 8px; padding: 10px;"
+            " font-size: 14px; line-height: 150%; }"
+        )
+        lay.addWidget(editor, 1)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Zapisz")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Anuluj")
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        lay.addWidget(buttons)
+        editor.setFocus()
+
+        if dialog.exec():
+            self._client.import_comment = editor.toPlainText().strip()
             self._store.update_client(self._client)
             self.show_client(self._client.id)
 
@@ -680,6 +711,20 @@ class ClientCardPage(QWidget):
         if not path:
             return
         self._store.set_client_photo(self._client, path)
+        self.show_client(self._client.id)
+
+    def _remove_photo(self) -> None:
+        if self._client is None or not self._client.photo_path:
+            return
+        from PySide6.QtWidgets import QMessageBox
+
+        reply = QMessageBox.question(
+            self, "Usuń zdjęcie", "Usunąć zdjęcie tego klienta?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self._store.remove_client_photo(self._client)
         self.show_client(self._client.id)
 
     def _style_attention(self, active: bool) -> None:
