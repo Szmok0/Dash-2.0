@@ -95,20 +95,23 @@ class AnalyticsPage(QWidget):
             mode_row.addWidget(btn)
         root.addLayout(mode_row)
 
-        # --- panel filtrów ---
+        # --- panel filtrów (zwijalny, aby lista wyników mogła zająć większość ekranu) ---
         self._filters_panel = QFrame()
         self._filters_panel.setObjectName("Panel")
         fl = QVBoxLayout(self._filters_panel)
-        fl.setContentsMargins(16, 14, 16, 14)
+        fl.setContentsMargins(16, 12, 16, 12)
         fl.setSpacing(10)
 
-        self._client_filters = self._build_client_filters()
-        self._history_filters = self._build_history_filters()
-        fl.addWidget(self._client_filters)
-        fl.addWidget(self._history_filters)
-
-        actions = QHBoxLayout()
-        actions.addStretch(1)
+        # nagłówek panelu: przełącznik zwijania + akcje (zawsze widoczne)
+        fhead = QHBoxLayout()
+        self._filters_toggle = QPushButton("▾  Filtry")
+        self._filters_toggle.setObjectName("Ghost")
+        self._filters_toggle.setCheckable(True)
+        self._filters_toggle.setChecked(True)
+        self._filters_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._filters_toggle.toggled.connect(self._toggle_filters)
+        fhead.addWidget(self._filters_toggle)
+        fhead.addStretch(1)
         reset = QPushButton("Wyczyść filtry")
         reset.setCursor(Qt.CursorShape.PointingHandCursor)
         reset.clicked.connect(self._reset_filters)
@@ -116,9 +119,20 @@ class AnalyticsPage(QWidget):
         apply_btn.setObjectName("Primary")
         apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         apply_btn.clicked.connect(self.refresh)
-        actions.addWidget(reset)
-        actions.addWidget(apply_btn)
-        fl.addLayout(actions)
+        fhead.addWidget(reset)
+        fhead.addWidget(apply_btn)
+        fl.addLayout(fhead)
+
+        # pola filtrów w zwijalnym kontenerze
+        self._fields_container = QWidget()
+        fcv = QVBoxLayout(self._fields_container)
+        fcv.setContentsMargins(0, 4, 0, 0)
+        fcv.setSpacing(10)
+        self._client_filters = self._build_client_filters()
+        self._history_filters = self._build_history_filters()
+        fcv.addWidget(self._client_filters)
+        fcv.addWidget(self._history_filters)
+        fl.addWidget(self._fields_container)
         root.addWidget(self._filters_panel)
 
         # --- tabela wyników ---
@@ -273,6 +287,11 @@ class AnalyticsPage(QWidget):
             return
         self._mode = mode
         self.set_palette(self._palette)
+
+    def _toggle_filters(self, expanded: bool) -> None:
+        """Zwija/rozwija pola filtrów — po zwinięciu lista wyników zajmuje niemal cały ekran."""
+        self._fields_container.setVisible(expanded)
+        self._filters_toggle.setText("▾  Filtry" if expanded else "▸  Filtry (rozwiń)")
 
     def _reset_filters(self) -> None:
         if self._mode == "clients":
