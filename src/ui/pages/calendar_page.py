@@ -169,6 +169,11 @@ class CalendarPage(QWidget):
             if w is not None:
                 w.setParent(None)
                 w.deleteLater()
+        # zresetuj rozciąganie i minimalne szerokości kolumn (różne między widokami)
+        for i in range(8):
+            self._grid.setColumnStretch(i, 0)
+            self._grid.setRowStretch(i, 0)
+            self._grid.setColumnMinimumWidth(i, 0)
 
     # ------------------------------------------------------------------
     def _render_month(self) -> None:
@@ -209,6 +214,9 @@ class CalendarPage(QWidget):
             f"QFrame#Card {{ background: {bg}; border: 1px solid {border}; border-radius: 8px; }}"
         )
         cell.setMinimumHeight(96)
+        # klik na dzień -> okno ze wszystkimi wydarzeniami tego dnia
+        cell.setCursor(Qt.CursorShape.PointingHandCursor)
+        cell.mousePressEvent = lambda _e, d=day, ev=list(events): self._open_day(d, ev)
         layout = QVBoxLayout(cell)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(3)
@@ -249,7 +257,8 @@ class CalendarPage(QWidget):
             day = week_start + timedelta(days=col)
             column = self._week_column(day, events.get(day, []), day == today)
             self._grid.addWidget(column, 0, col)
-            self._grid.setColumnStretch(col, 1)
+            # stała minimalna szerokość dnia -> na wąskim ekranie pojawia się poziomy pasek przewijania
+            self._grid.setColumnMinimumWidth(col, 210)
         self._grid.setRowStretch(0, 1)
 
     def _week_column(self, day: date, events: list[CalendarEvent], is_today: bool) -> QFrame:
@@ -280,6 +289,54 @@ class CalendarPage(QWidget):
             layout.addWidget(self._event_chip(event, compact=False))
         layout.addStretch(1)
         return col
+
+    # ------------------------------------------------------------------
+    def _open_day(self, day: date, events: list[CalendarEvent]) -> None:
+        """Okno ze wszystkimi wydarzeniami danego dnia (klik wydarzenia -> karta klienta)."""
+        from PySide6.QtWidgets import QDialog, QPushButton as _QPushButton
+
+        p = self._palette
+        dialog = QDialog(self)
+        dialog.setWindowTitle(day.strftime("%d.%m.%Y"))
+        dialog.setMinimumSize(400, 440)
+        dialog.setStyleSheet(f"QDialog {{ background: {p.panel}; }}")
+        lay = QVBoxLayout(dialog)
+        lay.setContentsMargins(18, 16, 18, 16)
+        lay.setSpacing(10)
+
+        title = QLabel(f"{WEEKDAYS[day.weekday()]}, {day.day} {MONTHS_PL[day.month - 1]} {day.year}")
+        title.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {p.text};")
+        lay.addWidget(title)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet(
+            "QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }"
+        )
+        host = QWidget()
+        v = QVBoxLayout(host)
+        v.setContentsMargins(0, 0, 6, 0)
+        v.setSpacing(8)
+        v.setAlignment(Qt.AlignmentFlag.AlignTop)
+        if not events:
+            empty = QLabel("Brak wydarzeń w tym dniu.")
+            empty.setStyleSheet(f"color: {p.text_muted}; font-size: 12px;")
+            v.addWidget(empty)
+        else:
+            for event in sorted(events, key=lambda ev: ev.when):
+                chip = self._event_chip(event, compact=False)
+                chip.setMinimumHeight(32)
+                chip.clicked.connect(dialog.accept)  # otwórz klienta i zamknij okno
+                v.addWidget(chip)
+        scroll.setWidget(host)
+        lay.addWidget(scroll, 1)
+
+        close = _QPushButton("Zamknij")
+        close.setCursor(Qt.CursorShape.PointingHandCursor)
+        close.clicked.connect(dialog.reject)
+        lay.addWidget(close)
+        dialog.exec()
 
     # ------------------------------------------------------------------
     def _event_chip(self, event: CalendarEvent, compact: bool) -> QPushButton:
