@@ -23,7 +23,7 @@ from services.store import DataStore
 from ui.styles.theme import Palette
 from ui.widgets.pills import make_pill
 
-COLUMNS = ["ID", "Nazwisko", "Imię", "Telefon", "E-mail", "Status"]
+COLUMNS = ["Lp.", "ID", "Nazwisko", "Imię", "Telefon", "E-mail", "Status"]
 
 
 class ClientsPage(QWidget):
@@ -53,6 +53,8 @@ class ClientsPage(QWidget):
         title = QLabel("Klienci")
         title.setStyleSheet("font-size: 17px; font-weight: 700;")
         head.addWidget(title)
+        self._count_lbl = QLabel("")
+        head.addWidget(self._count_lbl)
         head.addStretch(1)
         add_btn = QPushButton("+ Dodaj klienta")
         add_btn.setObjectName("Primary")
@@ -76,8 +78,10 @@ class ClientsPage(QWidget):
         header = self._table.horizontalHeader()
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self._table.setColumnWidth(0, 100)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)  # Lp.
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)  # ID
+        self._table.setColumnWidth(0, 54)
+        self._table.setColumnWidth(1, 100)
         layout.addWidget(self._table, 1)
 
         self._empty = QLabel(
@@ -92,6 +96,7 @@ class ClientsPage(QWidget):
 
     def set_palette(self, palette: Palette) -> None:
         self._palette = palette
+        self._count_lbl.setStyleSheet(f"color: {palette.text_muted}; font-size: 13px;")
         self.refresh()
 
     def set_filter(self, text: str) -> None:
@@ -110,11 +115,12 @@ class ClientsPage(QWidget):
             return
         self._table.setRowCount(len(clients))
         for row, c in enumerate(clients):
-            self._table.setItem(row, 0, QTableWidgetItem(c.external_id))
-            self._table.setItem(row, 1, QTableWidgetItem(c.last_name))
-            self._table.setItem(row, 2, QTableWidgetItem(c.first_name))
-            self._table.setItem(row, 3, QTableWidgetItem(c.phone or "—"))
-            self._table.setItem(row, 4, QTableWidgetItem(c.email or "—"))
+            self._table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
+            self._table.setItem(row, 1, QTableWidgetItem(c.external_id))
+            self._table.setItem(row, 2, QTableWidgetItem(c.last_name))
+            self._table.setItem(row, 3, QTableWidgetItem(c.first_name))
+            self._table.setItem(row, 4, QTableWidgetItem(c.phone or "—"))
+            self._table.setItem(row, 5, QTableWidgetItem(c.email or "—"))
             color = p.accent if c.client_status == "aktywny" else p.text_muted
             cell = QWidget()
             cell_layout = QHBoxLayout(cell)
@@ -122,7 +128,8 @@ class ClientsPage(QWidget):
             cell_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
             cell_layout.addWidget(make_pill(CLIENT_STATUS_LABELS[c.client_status], color))
             cell.setStyleSheet(f"background: transparent; border-bottom: 1px solid {p.line};")
-            self._table.setCellWidget(row, 5, cell)
+            self._table.setCellWidget(row, 6, cell)
+        self._count_lbl.setText(f"· łącznie: {len(clients)}")
 
     def _add_client(self) -> None:
         from ui.dialogs.client_form import ClientFormDialog
@@ -134,7 +141,7 @@ class ClientsPage(QWidget):
             self._open_client(dialog.created_client_id)
 
     def _row_clicked(self, row: int, _column: int) -> None:
-        item = self._table.item(row, 0)
+        item = self._table.item(row, 1)  # kolumna ID (0 to Lp.)
         if item is None:
             return
         client = self._store.find_by_external_id(item.text())

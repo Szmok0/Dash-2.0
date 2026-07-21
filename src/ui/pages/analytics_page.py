@@ -373,17 +373,20 @@ class AnalyticsPage(QWidget):
         self._result_lbl.setText(f"Działań w okresie: {len(table_rows)}")
 
     def _fill_table(self, headers: list[str], rows: list[list[str]]) -> None:
+        # kolumna „Lp." (1..N) — od razu widać, ilu klientów/działań; ostatni numer = łącznie
+        disp_headers = ["Lp."] + headers
         self._table.clear()
-        self._table.setColumnCount(len(headers))
-        self._table.setHorizontalHeaderLabels(headers)
+        self._table.setColumnCount(len(disp_headers))
+        self._table.setHorizontalHeaderLabels(disp_headers)
         self._table.setRowCount(len(rows))
         for r, row in enumerate(rows):
+            self._table.setItem(r, 0, QTableWidgetItem(str(r + 1)))
             for c, value in enumerate(row):
-                self._table.setItem(r, c, QTableWidgetItem(value))
-        # kolumny dopasowane do treści, jedna opisowa rozciągliwa
+                self._table.setItem(r, c + 1, QTableWidgetItem(value))
+        # kolumny dopasowane do treści, jedna opisowa rozciągliwa (indeks +1 za kolumnę Lp.)
         header = self._table.horizontalHeader()
-        stretch_col = 4 if self._mode == "history" else 1
-        for col in range(len(headers)):
+        stretch_col = (4 if self._mode == "history" else 1) + 1
+        for col in range(len(disp_headers)):
             mode = (
                 QHeaderView.ResizeMode.Stretch
                 if col == stretch_col
