@@ -80,7 +80,6 @@ class AnalyticsPage(QWidget):
         mode_row.addStretch(1)
 
         self._result_lbl = QLabel("")
-        self._result_lbl.setStyleSheet(f"color: {palette.text_muted}; font-size: 12px;")
         mode_row.addWidget(self._result_lbl)
         mode_row.addSpacing(10)
 
@@ -266,7 +265,11 @@ class AnalyticsPage(QWidget):
     def set_palette(self, palette: Palette) -> None:
         self._palette = palette
         p = palette
-        self._result_lbl.setStyleSheet(f"color: {p.text_muted}; font-size: 12px;")
+        self._result_lbl.setStyleSheet(
+            f"color: {p.text}; font-size: 14px; font-weight: 700;"
+            f" background: {p.card}; border: 1px solid {p.line};"
+            " border-radius: 8px; padding: 6px 14px;"
+        )
         for btn, active in ((self._clients_btn, self._mode == "clients"),
                             (self._history_btn, self._mode == "history")):
             btn.setStyleSheet(
