@@ -22,51 +22,55 @@ class Palette:
     selection: str
 
 
+# Ciemny stonowany: grafit-slate zamiast czerni — mniej męczący przy długiej pracy,
+# tekst nadal wyraźny (kontrast tekstu ~9–12:1, muted ~5–6:1).
 DARK = Palette(
-    bg="#171C26",
-    sidebar="#121722",
-    panel="#1D2330",
-    card="#202737",
-    line="#2B3245",
-    text="#F2F4F7",
-    text_muted="#A4ACB8",
-    accent="#4C8DFF",
-    red="#E85D68",
-    yellow="#E8B44C",
-    green="#4FBF78",
-    purple="#8B7CF6",
-    hover="#262E40",
-    selection="#2A3650",
+    bg="#262B33",
+    sidebar="#20242B",
+    panel="#2E343E",
+    card="#343B47",
+    line="#404856",
+    text="#E7EAF0",
+    text_muted="#A5ADB9",
+    accent="#5B93F0",
+    red="#E8646E",
+    yellow="#E3B34E",
+    green="#57C08A",
+    purple="#9385F0",
+    hover="#373F4B",
+    selection="#39465C",
 )
 
+# Jasny stonowany: ciepły, miękki papier zamiast czystej bieli — nie wypala oczu,
+# tekst ciemny grafit dla ostrości (kontrast tekstu ~11:1, muted ~5:1).
 LIGHT = Palette(
-    bg="#F3F5F8",
-    sidebar="#E8EBF0",
-    panel="#FFFFFF",
-    card="#FFFFFF",
-    line="#D6DAE3",
-    text="#1B2430",
-    text_muted="#5D6674",
+    bg="#EAE8E2",
+    sidebar="#E1DED6",
+    panel="#F1EFE9",
+    card="#F1EFE9",
+    line="#D3CFC5",
+    text="#2C3138",
+    text_muted="#5F656E",
     accent="#2F6FE0",
-    red="#C93A46",
-    yellow="#B07E1E",
-    green="#2E8B57",
+    red="#C1424E",
+    yellow="#8F6A1B",
+    green="#2F8455",
     purple="#6C5CE7",
-    hover="#E3E8F0",
-    selection="#D7E3FA",
+    hover="#DFDCD3",
+    selection="#D6E0F2",
 )
 
 # Motyw dla daltonistów — kolory semantyczne z palety Okabe–Ito,
 # rozróżnialne przy najczęstszych typach daltonizmu (deuteran/protan/tritan).
 # Neutralne tła jak w trybie ciemnym; „pozytywne" niebiesko-zielone, „ostrzeżenia" pomarańcz.
 COLORBLIND = Palette(
-    bg="#171C26",
-    sidebar="#121722",
-    panel="#1D2330",
-    card="#202737",
-    line="#2B3245",
-    text="#F2F4F7",
-    text_muted="#A4ACB8",
+    bg="#262B33",
+    sidebar="#20242B",
+    panel="#2E343E",
+    card="#343B47",
+    line="#404856",
+    text="#E7EAF0",
+    text_muted="#A5ADB9",
     accent="#56B4E9",   # sky blue — aktywny/neutralny
     red="#D55E00",      # vermillion — ostrzeżenie/negatyw znaczący
     yellow="#F0E442",   # jasny żółty — do poprawy/oczekuje

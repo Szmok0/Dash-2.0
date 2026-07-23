@@ -58,6 +58,14 @@ class DataStore:
         )
         self._conn.commit()
 
+    def follow_up_days(self) -> int:
+        """Próg „bez kontaktu" (dni) z ustawień; 1–365, domyślnie 30 przy błędnej wartości."""
+        try:
+            value = int(self.get_setting("follow_up_days", "30"))
+        except (TypeError, ValueError):
+            return 30
+        return value if 1 <= value <= 365 else 30
+
     def checkpoint(self) -> None:
         """Zrzuca WAL do głównego pliku bazy (spójna kopia zapasowa)."""
         try:

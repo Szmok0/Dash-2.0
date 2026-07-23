@@ -142,7 +142,7 @@ class DashboardPage(QWidget):
         scroll.setWidget(body)
         layout.addWidget(scroll, 1)
 
-        return {"frame": frame, "counter": counter, "body": body_layout}
+        return {"frame": frame, "counter": counter, "body": body_layout, "title": title_lbl}
 
     def _side_entry(self, primary: str, secondary: str, client_id: int) -> QPushButton:
         btn = QPushButton(f"{primary}\n{secondary}")
@@ -240,7 +240,9 @@ class DashboardPage(QWidget):
             self._open_client(client.id)
 
     def _fill_side_panels(self) -> None:
-        no_contact = self._store.no_contact_over(30)
+        threshold = self._store.follow_up_days()
+        self._no_contact_panel["title"].setText(f"Bez kontaktu >{threshold} dni")
+        no_contact = self._store.no_contact_over(threshold)
         _replace_entries(
             self._no_contact_panel["body"],
             [

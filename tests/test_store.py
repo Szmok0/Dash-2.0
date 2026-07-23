@@ -44,8 +44,40 @@ def test_task_completion_persists(store):
 
 def test_no_contact_over_30_includes_clients_without_contacts(store):
     result = {c.external_id for c, _ in store.no_contact_over(30)}
-    assert "AS-1052" in result  # brak kontaktów
-    assert "AS-1031" in result  # ostatni kontakt 41 dni temu
+    assert "AS-1052" in result      # brak kontaktów, bez pracy → obecny
+    assert "AS-1031" not in result  # na stażu (w_trakcie) → wykluczony regułą
+
+
+def test_follow_up_days_default_and_validation(store):
+    assert store.follow_up_days() == 30  # brak ustawienia → domyślnie 30
+    store.set_setting("follow_up_days", "14")
+    assert store.follow_up_days() == 14
+    for bad in ("0", "-5", "999", "abc", ""):
+        store.set_setting("follow_up_days", bad)
+        assert store.follow_up_days() == 30  # poza zakresem / nieparsowalne → 30
+
+
+def test_no_contact_over_respects_threshold(store):
+    cid = store.add_client(Client(id=0, external_id="THR-1", first_name="Pro", last_name="Gowy"))
+    store.add_contact(Contact(id=0, client_id=cid, contact_type="telefon",
+                              contact_at=datetime.now() - timedelta(days=41),
+                              status="odbyty", note=""))
+    ids_30 = {c.external_id for c, _ in store.no_contact_over(30)}
+    ids_50 = {c.external_id for c, _ in store.no_contact_over(50)}
+    assert "THR-1" in ids_30       # kontakt 41 dni temu, próg 30 → obecny
+    assert "THR-1" not in ids_50   # 41 < próg 50 → nieobecny
+
+
+def test_no_contact_over_excludes_employed_and_interns(store):
+    store.add_client(Client(id=0, external_id="EMP-1", first_name="Za", last_name="Trudniony",
+                            employment_status="zatrudniony"))
+    store.add_client(Client(id=0, external_id="STA-1", first_name="Na", last_name="Stazu",
+                            internship_status="w_trakcie"))
+    store.add_client(Client(id=0, external_id="FREE-1", first_name="Bez", last_name="Pracy"))
+    ids = {c.external_id for c, _ in store.no_contact_over(30)}
+    assert "FREE-1" in ids       # kontrolny: bez pracy, bez kontaktów → obecny
+    assert "EMP-1" not in ids    # zatrudniony → wykluczony
+    assert "STA-1" not in ids    # na stażu → wykluczony
 
 
 def test_notes_aggregate_contacts(store):

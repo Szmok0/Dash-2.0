@@ -1,8 +1,13 @@
 # Follow-up: konfigurowalny próg „bez kontaktu" (+ wykluczenie zatrudnionych/stażystów)
 
 - **Data:** 2026-07-23
-- **Status:** do przeglądu (spec przed implementacją)
+- **Status:** zaakceptowany i wdrożony (wykluczenie = TAK)
 - **Autor:** brainstorming (superpowers) + użytkownik
+
+> **Wynik wdrożenia:** podczas testów potwierdziła się rozbieżność z sekcji
+> *Problem* — klient demo `AS-1031` (Marek Nowak) ma `internship_status='w_trakcie'`,
+> więc nowa reguła słusznie usuwa go z listy. Istniejący test kodujący stare
+> zachowanie zaktualizowano do nowej reguły. Wszystkie testy (36) przechodzą.
 
 ## Kontekst
 
