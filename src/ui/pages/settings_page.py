@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -72,6 +73,34 @@ class SettingsPage(QWidget):
         row.addWidget(self._theme_combo)
         al.addLayout(row)
         root.addWidget(appearance)
+
+        # --- przypomnienia ---
+        reminders = QFrame()
+        reminders.setObjectName("Panel")
+        rl = QVBoxLayout(reminders)
+        rl.setContentsMargins(20, 16, 20, 16)
+        rl.setSpacing(12)
+        r_title = QLabel("Przypomnienia")
+        r_title.setStyleSheet("font-size: 17px; font-weight: 700;")
+        rl.addWidget(r_title)
+        rrow = QHBoxLayout()
+        self._followup_desc = QLabel(
+            "Po ilu dniach bez kontaktu klient trafia do panelu „Bez kontaktu” na Dashboardzie.\n"
+            "Zatrudnieni oraz osoby na stażu nie są pokazywani."
+        )
+        self._followup_desc.setWordWrap(True)
+        rrow.addWidget(self._followup_desc)
+        rrow.addStretch(1)
+        self._followup_spin = QSpinBox()
+        self._followup_spin.setRange(1, 365)
+        self._followup_spin.setSuffix(" dni")
+        self._followup_spin.setValue(self._store.follow_up_days())
+        self._followup_spin.setMinimumWidth(120)
+        self._followup_spin.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._followup_spin.valueChanged.connect(self._on_followup_changed)
+        rrow.addWidget(self._followup_spin)
+        rl.addLayout(rrow)
+        root.addWidget(reminders)
 
         # --- kopie zapasowe ---
         backup = QFrame()
@@ -161,6 +190,7 @@ class SettingsPage(QWidget):
         self._palette = palette
         muted = f"color: {palette.text_muted}; font-size: 12px;"
         self._desc.setStyleSheet(f"color: {palette.text};")
+        self._followup_desc.setStyleSheet(muted)
         self._backup_desc.setStyleSheet(muted)
         self._pin_desc.setStyleSheet(f"color: {palette.text};")
         self._data_desc.setStyleSheet(muted)
@@ -173,6 +203,11 @@ class SettingsPage(QWidget):
             " padding: 7px 16px; font-weight: 600; }"
             f"QPushButton:hover {{ background: {with_alpha(red, 0.2)}; }}"
         )
+
+    def _on_followup_changed(self, value: int) -> None:
+        self._store.set_setting("follow_up_days", str(value))
+        if self._on_data_changed:
+            self._on_data_changed()
 
     def refresh(self) -> None:
         from services.backup import list_backups

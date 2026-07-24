@@ -119,6 +119,8 @@ class ContactRepository:
             FROM clients c
             LEFT JOIN contacts ct ON ct.client_id = c.id AND ct.contact_at <= ?
             WHERE c.client_status = 'aktywny'
+              AND c.employment_status <> 'zatrudniony'
+              AND c.internship_status <> 'w_trakcie'
             GROUP BY c.id
             HAVING last_at IS NULL OR last_at < ?
             """,
