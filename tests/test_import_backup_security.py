@@ -235,6 +235,19 @@ def test_blank_clients_excluded_from_list_and_count(store):
     assert len(store.active_clients()) == before_active + 1
 
 
+def test_no_contact_excludes_blank_clients(store):
+    """Panel „bez kontaktu" nie pokazuje rekordów-widma z importu (bez nazwiska i danych)."""
+    from models.entities import Client
+
+    blank_id = store.add_client(Client(id=0, external_id="GH-B1", first_name="", last_name=""))
+    real_id = store.add_client(
+        Client(id=0, external_id="GH-R1", first_name="Test", last_name="Bezkontaktu")
+    )
+    ids = {c.id for c, _ in store.no_contact_over(1)}
+    assert blank_id not in ids   # widmo pominięte
+    assert real_id in ids        # realny klient bez kontaktu jest pokazany
+
+
 def test_dm_aneks_roundtrip(store):
     """Nowe pola DM/Aneks zapisują się i odczytują z bazy."""
     from models.entities import Client

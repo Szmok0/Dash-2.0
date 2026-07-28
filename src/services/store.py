@@ -217,10 +217,13 @@ class DataStore:
         return self._contacts.meetings_on(date.today())
 
     def no_contact_over(self, days: int = 30) -> list[tuple[Client, Optional[int]]]:
-        return [
-            (self._clients.get(client_id), days_since)
-            for client_id, days_since in self._contacts.no_contact_over(days)
-        ]
+        result: list[tuple[Client, Optional[int]]] = []
+        for client_id, days_since in self._contacts.no_contact_over(days):
+            client = self._clients.get(client_id)
+            if client.is_blank:
+                continue  # pomiń rekordy-widma z importu (bez nazwiska i danych)
+            result.append((client, days_since))
+        return result
 
     def requires_attention(self) -> list[Client]:
         return [c for c in self.active_clients() if c.requires_attention]
