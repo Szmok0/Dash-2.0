@@ -8,6 +8,15 @@ from typing import Optional
 from models.entities import ActivityRow, Client
 
 ANY = "__any__"  # wartość „dowolny” w filtrach
+DONE = "__done__"  # DM/Aneks: zrobiony
+NOT_DONE = "__not_done__"  # DM/Aneks: nie ma
+
+# wartości uznawane za „zrobiony/tak" (spójne z kartą klienta)
+_DONE_VALUES = {"tak", "1", "true", "x", "jest", "zrobiony", "zrobione", "zrobiona"}
+
+
+def _is_done(value) -> bool:
+    return str(value or "").strip().lower() in _DONE_VALUES
 
 
 @dataclass
@@ -18,6 +27,8 @@ class ClientFilter:
     ipd_status: str = ANY
     internship_status: str = ANY
     employment_status: str = ANY
+    dm: str = ANY  # ANY / DONE / NOT_DONE
+    aneks: str = ANY  # ANY / DONE / NOT_DONE
     gender: str = ANY
     disability_degree: str = ANY
     # działania: wymagaj, aby klient miał wpis danego typu
@@ -91,6 +102,10 @@ class AnalyticsService:
         ]
         for wanted, actual in checks:
             if wanted != ANY and wanted != actual:
+                return False
+        # DM / Aneks: dwustan „zrobiony / nie ma" (wartości „Tak"/„Nie" w bazie)
+        for wanted, value in ((flt.dm, client.dm), (flt.aneks, client.aneks)):
+            if wanted != ANY and (wanted == DONE) != _is_done(value):
                 return False
         return True
 

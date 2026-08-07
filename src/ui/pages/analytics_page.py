@@ -40,7 +40,14 @@ from models.entities import (
     INTERNSHIP_LABELS,
     IPD_STATUS_LABELS,
 )
-from services.analytics import ANY, AnalyticsService, ClientFilter, HistoryFilter
+from services.analytics import (
+    ANY,
+    DONE,
+    NOT_DONE,
+    AnalyticsService,
+    ClientFilter,
+    HistoryFilter,
+)
 from services.store import DataStore
 from ui.styles.theme import Palette
 
@@ -172,6 +179,8 @@ class AnalyticsPage(QWidget):
         self.f_client_status = self._combo(CLIENT_STATUS_LABELS)
         self.f_cv = self._combo({v: CV_STATUS_LABELS[v] for v in CV_STATUSES})
         self.f_ipd = self._combo(IPD_STATUS_LABELS)
+        self.f_dm = self._combo({DONE: "Zrobiony", NOT_DONE: "Nie ma"})
+        self.f_aneks = self._combo({DONE: "Zrobiony", NOT_DONE: "Nie ma"})
         self.f_internship = self._combo(INTERNSHIP_LABELS)
         self.f_employment = self._combo(EMPLOYMENT_LABELS)
         self.f_gender = self._combo({g: g for g in GENDERS})
@@ -198,6 +207,8 @@ class AnalyticsPage(QWidget):
             ("Status klienta", self.f_client_status),
             ("CV", self.f_cv),
             ("IPD", self.f_ipd),
+            ("DM", self.f_dm),
+            ("Aneks", self.f_aneks),
             ("Staż", self.f_internship),
             ("Zatrudnienie", self.f_employment),
             ("Płeć", self.f_gender),
@@ -216,7 +227,8 @@ class AnalyticsPage(QWidget):
         checks.addStretch(1)
         holder = QWidget()
         holder.setLayout(checks)
-        grid.addWidget(holder, 3, 0, 1, 4)
+        # 9 combo-boxów zajmuje wiersze 1–3, checkboxy pod nimi (wiersz 4)
+        grid.addWidget(holder, 4, 0, 1, 4)
         return w
 
     def _build_history_filters(self) -> QWidget:
@@ -299,8 +311,8 @@ class AnalyticsPage(QWidget):
     def _reset_filters(self) -> None:
         if self._mode == "clients":
             self.f_text.clear()
-            for box in (self.f_client_status, self.f_cv, self.f_ipd, self.f_internship,
-                        self.f_employment, self.f_gender, self.f_degree):
+            for box in (self.f_client_status, self.f_cv, self.f_ipd, self.f_dm, self.f_aneks,
+                        self.f_internship, self.f_employment, self.f_gender, self.f_degree):
                 box.setCurrentIndex(0)
             for chk in (self.f_has_tasks, self.f_has_contacts, self.f_has_trainings):
                 chk.setChecked(False)
@@ -324,6 +336,8 @@ class AnalyticsPage(QWidget):
             client_status=self.f_client_status.currentData(),
             cv_status=self.f_cv.currentData(),
             ipd_status=self.f_ipd.currentData(),
+            dm=self.f_dm.currentData(),
+            aneks=self.f_aneks.currentData(),
             internship_status=self.f_internship.currentData(),
             employment_status=self.f_employment.currentData(),
             gender=self.f_gender.currentData(),

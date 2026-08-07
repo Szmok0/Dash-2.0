@@ -248,6 +248,24 @@ def test_no_contact_excludes_blank_clients(store):
     assert real_id in ids        # realny klient bez kontaktu jest pokazany
 
 
+def test_analytics_filter_dm_aneks(store):
+    """Analityka filtruje po DM i Aneks (zrobiony / nie ma)."""
+    from services.analytics import AnalyticsService, ClientFilter, DONE, NOT_DONE
+
+    svc = AnalyticsService(store)
+    total = len(store.clients)
+    c = store.find_by_external_id("AS-1024")
+    c.dm = "Tak"
+    c.aneks = "Nie"
+    store.update_client(c)
+
+    done = svc.filter_clients(ClientFilter(dm=DONE))
+    assert [r.client.id for r in done] == [c.id]
+    assert len(svc.filter_clients(ClientFilter(dm=NOT_DONE))) == total - 1
+    # aneks „nie ma" u tego klienta -> nie pojawia się w filtrze „zrobiony"
+    assert all(r.client.id != c.id for r in svc.filter_clients(ClientFilter(aneks=DONE)))
+
+
 def test_dm_aneks_roundtrip(store):
     """Nowe pola DM/Aneks zapisują się i odczytują z bazy."""
     from models.entities import Client
